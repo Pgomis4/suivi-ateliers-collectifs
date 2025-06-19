@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Suivi des Ateliers Collectifs</title>
+
+  <!-- Librairies externes -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    /* Style moderne unifié */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    function drawAgeChart() {
+      const ctx = document.getElementById('chartAge').getContext('2d');
+      
+      if (charts.age) {
+        charts.age.destroy();
+      }
+      
+      const ageGroups = {
+        '<12 ans': collectifData.reduce((sum, item) => sum + item.age0, 0),
+        '12-17 ans': collectifData.reduce((sum, item) => sum + item.age12, 0),
+        '18-24 ans': collectifData.reduce((sum, item) => sum + item.age18, 0),
+        '25-39 ans': collectifData.reduce((sum, item) => sum + item.age25, 0),
+        '40-59 ans': collectifData.reduce((sum, item) => sum + item.age40, 0),
+        '60-69 ans': collectifData.reduce((sum, item) => sum + item.age60, 0),
+        '70 ans +': collectifData.reduce((sum, item) => sum + item.age70, 0)
+      };
+      
+      const total = Object.values(ageGroups).reduce((a, b) => a + b, 0);
+      if (total === 0) return;
+      
+      const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#fa709a', '#fee140'];
+      
+      charts.age = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(ageGroups),
+          datasets: [{
+            data: Object.values(ageGroups),
+            backgroundColor: colors,
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1 }
+            },
+            x: {
+              ticks: {
+                maxRotation: 45,
+                minRotation: 45
+              }
+            }
+          }
+        }
+      });
+      
+      // Légende
+      const legend = document.getElementById('statusLegend');
+      legend.innerHTML = Object.entries(statuses).map((item, i) => {
+        const percentage = ((item[1] / total) * 100).toFixed(1);
+        return `
+          <div class="legend-item">
+            <div class="legend-label">
+              <span class="legend-color" style="background: ${colors[i]}"></span>
+              ${item[0]}
+            </div>
+            <div class="legend-stats">
+              <span class="legend-count">${item[1]}</span>
+              <span class="legend-percentage">${percentage}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }ero: true,
+              ticks: { stepSize: 1 }
+            }
+          }
+        }
+      });
+      
+      // Légende
+      const legend = document.getElementById('ageLegend');
+      legend.innerHTML = Object.entries(ageGroups).map((item, i) => {
+        const percentage = ((item[1] / total) * 100).toFixed(1);
+        return `
+          <div class="legend-item">
+            <div class="legend-label">
+              <span class="legend-color" style="background: ${colors[i]}"></span>
+              ${item[0]}
+            </div>
+            <div class="legend-stats">
+              <span class="legend-count">${item[1]}</span>
+              <span class="legend-percentage">${percentage}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function drawParticipationChart() {
+      const ctx = document.getElementById('chartParticipation').getContext('2d');
+      
+      if (charts.participation) {
+        charts.participation.destroy();
+      }
+      
+      const firstTime = collectifData.reduce((sum, item) => sum + item.firstTime, 0);
+      const regular = collectifData.reduce((sum, item) => sum + item.regular, 0);
+      const occasional = collectifData.reduce((sum, item) => sum + item.occasional, 0);
+      const total = firstTime + regular + occasional;
+      
+      if (total === 0) return;
+      
+      charts.participation = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Première fois', 'Régulier', 'Occasionnel'],
+          datasets: [{
+            data: [firstTime, regular, occasional],
+            backgroundColor: ['#10b981', '#667eea', '#f093fb'],
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+      
+      // Légende
+      const legend = document.getElementById('participationLegend');
+      const data = [
+        { label: 'Première fois', value: firstTime, color: '#10b981' },
+        { label: 'Régulier', value: regular, color: '#667eea' },
+        { label: 'Occasionnel', value: occasional, color: '#f093fb' }
+      ];
+      
+      legend.innerHTML = data.map(item => {
+        const percentage = ((item.value / total) * 100).toFixed(1);
+        return `
+          <div class="legend-item">
+            <div class="legend-label">
+              <span class="legend-color" style="background: ${item.color}"></span>
+              ${item.label}
+            </div>
+            <div class="legend-stats">
+              <span class="legend-count">${item.value}</span>
+              <span class="legend-percentage">${percentage}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function drawStatusChart() {
+      const ctx = document.getElementById('chartStatus').getContext('2d');
+      
+      if (charts.status) {
+        charts.status.destroy();
+      }
+      
+      const statuses = {
+        'Sans activité': collectifData.reduce((sum, item) => sum + item.statusSA, 0),
+        'En activité': collectifData.reduce((sum, item) => sum + item.statusEA, 0),
+        'Scolarisé': collectifData.reduce((sum, item) => sum + item.statusSch, 0),
+        'Retraité': collectifData.reduce((sum, item) => sum + item.statusRet, 0),
+        'Non communiqué': collectifData.reduce((sum, item) => sum + item.statusNC, 0)
+      };
+      
+      const total = Object.values(statuses).reduce((a, b) => a + b, 0);
+      if (total === 0) return;
+      
+      const colors = ['#dc2626', '#10b981', '#3b82f6', '#f59e0b', '#6b7280'];
+      
+      charts.status = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(statuses),
+          datasets: [{
+            data: Object.values(statuses),
+            backgroundColor: colors,
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1 }
+            },
+            x: {
+              ticks: {
+                maxRotation: 45,
+                minRotation: 45
+              }
+            }
+          }
+        }
+      });
+      
+      // Légende
+      const legend = document.getElementById('statusLegend');
+      legend.innerHTML = Object.entries(statuses).map((item, i) => {
+        const percentage = ((item[1] / total) * 100).toFixed(1);
+        return `
+          <div class="legend-item">
+            <div class="legend-label">
+              <span class="legend-color" style="background: ${colors[i]}"></span>
+              ${item[0]}
+            </div>
+            <div class="legend-stats">
+              <span class="legend-count">${item[1]}</span>
+              <span class="legend-percentage">${percentage}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }ero: true,
+              ticks: { stepSize: 1 }
+            },
+            x: {
+              ticks: {
+                maxRotation: 45,
+                minRotation: 45
+              }
+            }
+          }
+        }
+      });
+      
+      // Légende
+      const legend = document.getElementById('statusLegend');
+      legend.innerHTML = Object.entries(statuses).map((item, i) => {
+        const percentage = ((item[1] / total) * 100).toFixed(1);
+        return `
+          <div class="legend-item">
+            <div class="legend-label">
+              <span class="legend-color" style="background: ${colors[i]}"></span>
+              ${item[0]}
+            </div>
+            <div class="legend-stats">
+              <span class="legend-count">${item[1]}</span>
+              <span class="legend-percentage">${percentage}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Affichage du tableau
+    function displayTable() {
+      const tbody = document.getElementById('tbodyCollectif');
+      tbody.innerHTML = '';
+      
+      collectifData.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="select-col"><input type="checkbox" onchange="toggleRow(${index})" ${selectedRows.has(index) ? 'checked' : ''}></td>
+          <td>${formatDate(item.date)}</td>
+          <td>${item.activity}</td>
+          <td>${item.count}</td>
+          <td>${item.firstTime}</td>
+          <td>${item.regular}</td>
+          <td>${item.occasional}</td>
+          <td>${item.male}</td>
+          <td>${item.female}</td>
+          <td>
+            <button class="action-btn" onclick="viewDetails(${index})" title="Voir détails">👁️</button>
+            <button class="action-btn" onclick="deleteRow(${index})" title="Supprimer">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Fonctions du tableau
+    function toggleAll() {
+      const isChecked = document.getElementById('selectAll').checked;
+      document.querySelectorAll('#tbodyCollectif input[type="checkbox"]').forEach((cb, i) => {
+        cb.checked = isChecked;
+        if (isChecked) selectedRows.add(i);
+        else selectedRows.delete(i);
+      });
+    }
+
+    function toggleRow(index) {
+      if (selectedRows.has(index)) selectedRows.delete(index);
+      else selectedRows.add(index);
+    }
+
+    function deleteRow(index) {
+      if (confirm('Supprimer cet atelier ?')) {
+        collectifData.splice(index, 1);
+        saveData();
+        displayTable();
+        updateStats();
+        showToast('Atelier supprimé', 'success');
+      }
+    }
+
+    function viewDetails(index) {
+      const item = collectifData[index];
+      
+      const detailsHTML = `
+        <div style="padding: 20px;">
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📅 Informations générales</h3>
+            <p><strong>Date:</strong> ${formatDate(item.date)}</p>
+            <p><strong>Activité:</strong> ${item.activity}</p>
+            <p><strong>Participants:</strong> ${item.count}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">🔄 Types de participation</h3>
+            <p><strong>Première fois:</strong> ${item.firstTime}</p>
+            <p><strong>Régulier:</strong> ${item.regular}</p>
+            <p><strong>Occasionnel:</strong> ${item.occasional}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">👥 Répartition par genre</h3>
+            <p><strong>Hommes:</strong> ${item.male}</p>
+            <p><strong>Femmes:</strong> ${item.female}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📊 Tranches d'âge</h3>
+            <p><strong>&lt;12 ans:</strong> ${item.age0}</p>
+            <p><strong>12-17 ans:</strong> ${item.age12}</p>
+            <p><strong>18-24 ans:</strong> ${item.age18}</p>
+            <p><strong>25-39 ans:</strong> ${item.age25}</p>
+            <p><strong>40-59 ans:</strong> ${item.age40}</p>
+            <p><strong>60-69 ans:</strong> ${item.age60}</p>
+            <p><strong>70 ans et +:</strong> ${item.age70}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">💼 Statuts</h3>
+            <p><strong>Sans activité:</strong> ${item.statusSA}</p>
+            <p><strong>En activité:</strong> ${item.statusEA}</p>
+            <p><strong>Scolarisé:</strong> ${item.statusSch}</p>
+            <p><strong>Retraité:</strong> ${item.statusRet}</p>
+            <p><strong>Non communiqué:</strong> ${item.statusNC}</p>
+          </div>
+          
+          ${item.notes ? `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📝 Notes</h3>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">${item.notes}</div>
+          </div>
+          ` : ''}
+          
+          <div style="text-align: center; margin-top: 20px;">
+            <button onclick="closeDetailsModal()" style="background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Fermer</button>
+          </div>
+        </div>
+      `;
+      
+      // Créer et afficher la modal
+      let modal = document.getElementById('detailsModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'detailsModal';
+        modal.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        `;
+        document.body.appendChild(modal);
+      }
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+          ${detailsHTML}
+        </div>
+      `;
+      
+      modal.style.display = 'flex';
+    }
+
+    function closeDetailsModal() {
+      const modal = document.getElementById('detailsModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    function clearAll() {
+      if (confirm('Supprimer toutes les données ? Cette action est irréversible.')) {
+        collectifData = [];
+        selectedRows.clear();
+        saveData();
+        displayTable();
+        updateStats();
+        showToast('Toutes les données ont été supprimées', 'success');
+      }
+    }
+
+    // Export Excel
+    function exportXLSX() {
+      if (collectifData.length === 0) {
+        showToast('Aucune donnée à exporter', 'error');
+        return;
+      }
+      
+      const ws_data = [
+        ['Date', 'Activité', 'Participants', 'Première fois', 'Régulier', 'Occasionnel', 
+         'Hommes', 'Femmes', '<12 ans', '12-17 ans', '18-24 ans', '25-39 ans', 
+         '40-59 ans', '60-69 ans', '70 ans +', 'Sans activité', 'En activité', 
+         'Scolarisé', 'Retraité', 'Non communiqué', 'Notes']
+      ];
+      
+      collectifData.forEach(item => {
+        ws_data.push([
+          formatDate(item.date),
+          item.activity,
+          item.count,
+          item.firstTime,
+          item.regular,
+          item.occasional,
+          item.male,
+          item.female,
+          item.age0,
+          item.age12,
+          item.age18,
+          item.age25,
+          item.age40,
+          item.age60,
+          item.age70,
+          item.statusSA,
+          item.statusEA,
+          item.statusSch,
+          item.statusRet,
+          item.statusNC,
+          item.notes || ''
+        ]);
+      });
+      
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ateliers');
+      XLSX.writeFile(wb, `ateliers_${new Date().toISOString().split('T')[0]}.xlsx`);
+      showToast('Export Excel réussi', 'success');
+    }
+
+    // Mise à jour des statistiques
+    function updateStats() {
+      const totalAteliers = collectifData.length;
+      const totalParticipants = collectifData.reduce((sum, item) => sum + item.count, 0);
+      
+      document.getElementById('cntAteliers').textContent = totalAteliers;
+      document.getElementById('cntParticipants').textContent = totalParticipants;
+    }
+
+    // Fonctions utilitaires
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('fr-FR');
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Sauvegarde/chargement des données
+    function saveData() {
+      try {
+        localStorage.setItem('collectifData', JSON.stringify(collectifData));
+      } catch (e) {
+        console.warn('Impossible de sauvegarder dans localStorage');
+      }
+    }
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem('collectifData');
+        if (saved) {
+          collectifData = JSON.parse(saved);
+          displayTable();
+          updateStats();
+        }
+      } catch (e) {
+        console.warn('Impossible de charger depuis localStorage');
+        collectifData = [];
+      }
+    }
+    
+    body {
+      background: #f8fafc;
+      padding: 20px;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+    
+    .container {
+      max-width: 1400px;
+      margin: auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      animation: shimmer 4s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+    
+    .header h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      animation: fadeInUp 1.2s ease-out;
+      letter-spacing: -0.5px;
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .tabs {
+      display: flex;
+      background: #6366f1;
+      padding: 0 20px;
+    }
+    
+    .tabs button {
+      padding: 15px 25px;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.8);
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1rem;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+    }
+    
+    .tabs button:hover {
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .tabs button.active {
+      color: white;
+      border-bottom-color: white;
+    }
+    
+    .section {
+      display: none;
+      padding: 0;
+    }
+    
+    .section.active {
+      display: block;
+    }
+
+    /* Formulaire */
+    .collect-form {
+      background: #f8fafc;
+      padding: 24px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      margin: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .collect-form h2 {
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #1e293b;
+    }
+    
+    .reset-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.2rem;
+      opacity: .7;
+      transition: .2s;
+      padding: 8px;
+      border-radius: 6px;
+    }
+    
+    .reset-btn:hover {
+      opacity: 1;
+      background: rgba(59,130,246,.1);
+    }
+    
+    label {
+      display: block;
+      font-weight: 600;
+      margin: 16px 0 6px;
+      font-size: .95rem;
+      color: #374151;
+    }
+    
+    input, select, textarea {
+      width: 100%;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+      font-size: .95rem;
+      transition: border-color .2s;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+    }
+    
+    textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+    
+    .collect-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .collect-row button {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: #3b82f6;
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: background .2s;
+    }
+    
+    .collect-row button:hover {
+      background: #2563eb;
+    }
+    
+    .counter-box {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      background: #fff;
+      margin-bottom: 12px;
+      padding: 12px 16px;
+      font-size: .9rem;
+      transition: border-color .2s;
+    }
+    
+    .counter-box:hover {
+      border-color: #d1d5db;
+    }
+    
+    .counter-label {
+      flex: 1;
+      font-weight: 500;
+    }
+    
+    .counter-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .counter-controls button {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: #3b82f6;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background .2s;
+    }
+    
+    .counter-controls button:hover {
+      background: #2563eb;
+    }
+    
+    .counter-controls span {
+      min-width: 20px;
+      text-align: center;
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    .group {
+      margin-bottom: 24px;
+    }
+    
+    .group h3 {
+      font-size: 1.1rem;
+      margin-bottom: 12px;
+      color: #1f2937;
+      font-weight: 600;
+    }
+    
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 12px;
+    }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+    }
+    
+    .btn-submit {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: transform .2s;
+    }
+    
+    .btn-submit:hover {
+      transform: translateY(-2px);
+    }
+
+    /* Alerte de validation */
+    .validation-alert {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      display: none;
+    }
+
+    .validation-alert.show {
+      display: block;
+    }
+
+    /* Tableau */
+    .table-box {
+      padding: 24px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      margin: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    
+    .table-box h2 {
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+      color: #1e293b;
+    }
+    
+    .controls {
+      margin-bottom: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .controls button {
+      padding: 8px 16px;
+      font-size: .85rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: transform .2s;
+    }
+    
+    .controls button:hover {
+      transform: translateY(-1px);
+    }
+    
+    .xlsx {
+      background: #2563eb;
+      color: #fff;
+    }
+    
+    .clear {
+      background: #dc2626;
+      color: #fff;
+    }
+    
+    .stats-mini {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
+    .stats-mini .card {
+      background: #fff;
+      padding: 16px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      text-align: center;
+      font-size: .9rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .stats-mini .num {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #3b82f6;
+      margin-bottom: 4px;
+    }
+    
+    .stats-mini .label {
+      color: #6b7280;
+      font-weight: 500;
+    }
+    
+    .table-container {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      overflow: auto;
+      max-height: 400px;
+      background: #fff;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    th, td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: .9rem;
+    }
+    
+    th {
+      background: #f1f5f9;
+      color: #374151;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    
+    tr:hover {
+      background: #f8fafc;
+    }
+    
+    .select-col {
+      width: 50px;
+      text-align: center;
+    }
+    
+    .action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+      margin: 0 4px;
+      padding: 6px;
+      border-radius: 4px;
+      transition: background .2s;
+    }
+    
+    .action-btn:hover {
+      background: rgba(0,0,0,.1);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: all .3s ease;
+      color: #fff;
+      font-weight: 500;
+      z-index: 1001;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    }
+    
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .toast.error {
+      background: #dc2626;
+    }
+    
+    .toast.success {
+      background: #10b981;
+    }
+
+    /* === STYLES STATISTIQUES AMÉLIORÉS === */
+    #statsSection {
+      background: #ffffff;
+      min-height: 100vh;
+      padding: 0;
+      margin: 0;
+    }
+
+    #statsSection .stats-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 32px;
+      text-align: center;
+    }
+
+    #statsSection .stats-header h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 16px;
+    }
+
+    #statsSection .stats-header p {
+      opacity: 0.9;
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+
+    #statsSection .export-pdf-btn {
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.95rem;
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+
+    #statsSection .export-pdf-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
+    }
+
+    #statsSection .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 24px;
+      padding: 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    #statsSection .stat-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #statsSection .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+    }
+
+    #statsSection .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    #statsSection .stat-card h3 {
+      font-size: 1.25rem;
+      color: #1e293b;
+      margin-bottom: 20px;
+      font-weight: 700;
+    }
+
+    #statsSection .stat-number {
+      font-size: 3rem;
+      font-weight: 900;
+      color: #1e293b;
+      margin-bottom: 8px;
+      line-height: 1;
+    }
+
+    #statsSection .stat-number.primary {
+      color: #667eea;
+    }
+
+    #statsSection .stat-number.success {
+      color: #10b981;
+    }
+
+    #statsSection .stat-label {
+      color: #64748b;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    #statsSection .stat-sublabel {
+      color: #94a3b8;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    /* Graphiques donut améliorés */
+    #statsSection .donut-chart {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin: 20px auto;
+    }
+
+    #statsSection .donut-chart svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    #statsSection .donut-chart circle {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: all 0.6s ease;
+    }
+
+    #statsSection .donut-chart .donut-bg {
+      stroke: #e2e8f0;
+      stroke-width: 8;
+    }
+
+    #statsSection .donut-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      background: #ffffff;
+      border-radius: 50%;
+      width: 90px;
+      height: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid #f1f5f9;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    #statsSection .donut-center .donut-value {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #1e293b;
+      line-height: 1;
+    }
+
+    #statsSection .donut-center .donut-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    /* Légendes améliorées */
+    #statsSection .chart-legend {
+      margin-top: 20px;
+    }
+
+    #statsSection .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: #f8fafc;
+      transition: all 0.3s ease;
+      border: 1px solid #e2e8f0;
+    }
+
+    #statsSection .legend-item:hover {
+      background: #f1f5f9;
+      transform: translateX(4px);
+    }
+
+    #statsSection .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 12px;
+      flex-shrink: 0;
+    }
+
+    #statsSection .legend-label {
+      color: #374151;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    #statsSection .legend-stats {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #statsSection .legend-count {
+      font-weight: 700;
+      color: #1e293b;
+      min-width: 30px;
+      text-align: right;
+    }
+
+    #statsSection .legend-percentage {
+      font-size: 0.875rem;
+      color: #64748b;
+      min-width: 50px;
+      text-align: right;
+      background: #e2e8f0;
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    /* Barres de progression */
+    #statsSection .progress-bar {
+      background: #f1f5f9;
+      border-radius: 50px;
+      height: 12px;
+      margin: 12px 0;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid #e2e8f0;
+    }
+
+    #statsSection .progress-fill {
+      height: 100%;
+      border-radius: 50px;
+      position: relative;
+      transition: all 0.8s ease;
+    }
+
+    .progress-red { background: linear-gradient(90deg, #ef4444, #fca5a5); }
+    .progress-green { background: linear-gradient(90deg, #10b981, #6ee7b7); }
+    .progress-blue { background: linear-gradient(90deg, #3b82f6, #93c5fd); }
+    .progress-purple { background: linear-gradient(90deg, #8b5cf6, #c4b5fd); }
+    .progress-orange { background: linear-gradient(90deg, #f59e0b, #fcd34d); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      #statsSection .stats-grid {
+        grid-template-columns: 1fr;
+        padding: 20px;
+        gap: 16px;
+      }
+      
+      #statsSection .stat-card {
+        padding: 20px;
+      }
+      
+      #statsSection .stats-header {
+        padding: 20px 16px;
+      }
+      
+      #statsSection .stats-header h1 {
+        font-size: 1.8rem;
+      }
+      
+      #statsSection .stat-number {
+        font-size: 2.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div style="text-align: center; width: 100%; position: relative; z-index: 1;">
+        <h1>🎨 Suivi des Activités d'Animation</h1>
+      </div>
+    </div>
+
+    <!-- Onglets -->
+    <div class="tabs">
+      <button id="btnForm" class="active">👥 Collectif</button>
+      <button id="btnStats">📊 Statistiques</button>
+    </div>
+
+    <!-- Formulaire -->
+    <div id="formSection" class="section active">
+      <div class="collect-form">
+        <h2>
+          👥 Accompagnement collectif
+          <button id="btnReset" class="reset-btn" title="Réinitialiser le formulaire">🔄</button>
+        </h2>
+
+        <!-- Alerte de validation -->
+        <div id="validationAlert" class="validation-alert">
+          <span id="validationMessage"></span>
+        </div>
+
+        <label>Date</label>
+        <input type="date" id="colDate">
+
+        <label>Activité *</label>
+        <select id="colActivity">
+          <option value="">Sélectionnez une activité…</option>
+          <option>l'AEP</option>
+          <option>Sport</option>
+          <option>Bien-être</option>
+          <option>Passerelles</option>
+          <option>Bla Bla Thé</option>
+          <option>Cuisine</option>
+          <option>Atelier créatif</option>
+          <option>Ludothèque</option>
+        </select>
+
+        <label>Participants totaux * <span id="totalDisplay" style="color: #3b82f6; font-weight: bold;"></span></label>
+        <div class="collect-row">
+          <button onclick="updateCount(-1)">–</button>
+          <input type="number" id="colCount" value="0" min="0" onchange="updateTotalDisplay()">
+          <button onclick="updateCount(1)">+</button>
+        </div>
+
+        <label>Participation</label>
+        <div class="grid-3">
+          <div class="counter-box">
+            <div class="counter-label">Première fois</div>
+            <div class="counter-controls">
+              <button onclick="changeCounter('pf',-1)">–</button>
+              <span id="cntPf">0</span>
+              <button onclick="changeCounter('pf',+1)">+</button>
+            </div>
+          </div>
+          <div class="counter-box">
+            <div class="counter-label">Régulier</div>
+            <div class="counter-controls">
+              <button onclick="changeCounter('pr',-1)">–</button>
+              <span id="cntPr">0</span>
+              <button onclick="changeCounter('pr',+1)">+</button>
+            </div>
+          </div>
+          <div class="counter-box">
+            <div class="counter-label">Occasionnel</div>
+            <div class="counter-controls">
+              <button onclick="changeCounter('po',-1)">–</button>
+              <span id="cntPo">0</span>
+              <button onclick="changeCounter('po',+1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sexe -->
+        <div class="group">
+          <h3>Sexe</h3>
+          <div class="grid-3">
+            <div class="counter-box">
+              <div class="counter-label">Masculin</div>
+              <div class="counter-controls">
+                <button onclick="changeCounter('m',-1)">–</button>
+                <span id="cntM">0</span>
+                <button onclick="changeCounter('m',+1)">+</button>
+              </div>
+            </div>
+            <div class="counter-box">
+              <div class="counter-label">Féminin</div> 
+              <div class="counter-controls">
+                <button onclick="changeCounter('f',-1)">–</button>
+                <span id="cntF">0</span>
+                <button onclick="changeCounter('f',+1)">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tranches d'âge -->
+        <div class="group">
+          <h3>Tranche d'âge</h3>
+          <div class="grid-2">
+            <div class="counter-box"><div class="counter-label">&lt;12 ans</div><div class="counter-controls"><button onclick="changeCounter('t0',-1)">–</button><span id="cntT0">0</span><button onclick="changeCounter('t0',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">12–17 ans</div><div class="counter-controls"><button onclick="changeCounter('t12',-1)">–</button><span id="cntT12">0</span><button onclick="changeCounter('t12',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">18–24 ans</div><div class="counter-controls"><button onclick="changeCounter('t18',-1)">–</button><span id="cntT18">0</span><button onclick="changeCounter('t18',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">25–39 ans</div><div class="counter-controls"><button onclick="changeCounter('t25',-1)">–</button><span id="cntT25">0</span><button onclick="changeCounter('t25',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">40–59 ans</div><div class="counter-controls"><button onclick="changeCounter('t40',-1)">–</button><span id="cntT40">0</span><button onclick="changeCounter('t40',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">60–69 ans</div><div class="counter-controls"><button onclick="changeCounter('t60',-1)">–</button><span id="cntT60">0</span><button onclick="changeCounter('t60',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">70 ans et +</div><div class="counter-controls"><button onclick="changeCounter('t70',-1)">–</button><span id="cntT70">0</span><button onclick="changeCounter('t70',+1)">+</button></div></div>
+          </div>
+        </div>
+
+        <!-- Statuts -->
+        <div class="group">
+          <h3>Statut du bénéficiaire</h3>
+          <div class="grid-2">
+            <div class="counter-box"><div class="counter-label">Sans activité</div><div class="counter-controls"><button onclick="changeCounter('sa',-1)">–</button><span id="cntSa">0</span><button onclick="changeCounter('sa',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">En activité</div><div class="counter-controls"><button onclick="changeCounter('ea',-1)">–</button><span id="cntEa">0</span><button onclick="changeCounter('ea',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">Scolarisé</div><div class="counter-controls"><button onclick="changeCounter('sch',-1)">–</button><span id="cntSch">0</span><button onclick="changeCounter('sch',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">Retraité</div><div class="counter-controls"><button onclick="changeCounter('ret',-1)">–</button><span id="cntRet">0</span><button onclick="changeCounter('ret',+1)">+</button></div></div>
+            <div class="counter-box"><div class="counter-label">Non communiqué</div><div class="counter-controls"><button onclick="changeCounter('nc',-1)">–</button><span id="cntNc">0</span><button onclick="changeCounter('nc',+1)">+</button></div></div>
+          </div>
+        </div>
+
+        <label>Notes sur l'atelier</label>
+        <textarea id="collectNotes" placeholder="Remarques…"></textarea>
+
+        <button class="btn-submit" onclick="saveCollectif()">💾 Enregistrer l'atelier collectif</button>
+      </div>
+
+      <!-- Tableau -->
+      <div class="table-box">
+        <h2>📊 Tableau de suivi des ateliers</h2>
+        <div class="controls">
+          <button class="xlsx" onclick="exportXLSX()">📊 Export Excel</button>
+          <button class="clear" onclick="clearAll()">🗑️ Vider tout</button>
+        </div>
+        <div class="stats-mini">
+          <div class="card"><div class="num" id="cntAteliers">0</div><div class="label">Ateliers</div></div>
+          <div class="card"><div class="num" id="cntParticipants">0</div><div class="label">Participants</div></div>
+        </div>
+        <div class="table-container">
+          <table id="tableCollectif">
+            <thead>
+              <tr>
+                <th class="select-col"><input type="checkbox" id="selectAll" onchange="toggleAll()"></th>
+                <th>Date</th>
+                <th>Activité</th>
+                <th>Participants</th>
+                <th>Première fois</th>
+                <th>Régulier</th>
+                <th>Occasionnel</th>
+                <th>Hommes</th>
+                <th>Femmes</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyCollectif"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div id="statsSection" class="section">
+      <div class="stats-header">
+        <h1>📊 Mes statistiques</h1>
+        <p>Analyse complète de vos activités d'animation</p>
+        <button class="export-pdf-btn" onclick="exportStatsPDF()">📄 Exporter PDF</button>
+      </div>
+      
+      <div class="stats-grid">
+        <!-- Statistiques générales -->
+        <div class="stat-card">
+          <h3>📊 Statistiques générales</h3>
+          <div class="stat-number primary" id="totalWorkshops">0</div>
+          <div class="stat-label">Ateliers au total</div>
+          <div class="stat-sublabel" id="dateRange">Depuis le début</div>
+        </div>
+
+        <div class="stat-card">
+          <h3>👥 Participants totaux</h3>
+          <div class="stat-number success" id="totalParticipants">0</div>
+          <div class="stat-label">Personnes accompagnées</div>
+          <div class="stat-sublabel">Toutes activités confondues</div>
+        </div>
+
+        <div class="stat-card">
+          <h3>📈 Moyenne par atelier</h3>
+          <div class="stat-number primary" id="avgParticipants">0</div>
+          <div class="stat-label">Participants en moyenne</div>
+          <div class="stat-sublabel">Par session d'atelier</div>
+        </div>
+
+        <!-- Répartition par sexe -->
+        <div class="stat-card">
+          <h3>👫 Répartition par sexe</h3>
+          <div class="donut-chart">
+            <svg>
+              <circle class="donut-bg" cx="100" cy="100" r="80"></circle>
+              <circle id="sexeHommes" cx="100" cy="100" r="80" stroke="#3b82f6" stroke-dasharray="0 502"></circle>
+              <circle id="sexeFemmes" cx="100" cy="100" r="80" stroke="#ec4899" stroke-dasharray="0 502"></circle>
+            </svg>
+            <div class="donut-center">
+              <div class="donut-value" id="sexeTotal">0</div>
+              <div class="donut-label">Total</div>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                Hommes
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="sexeHommesCount">0</span>
+                <span class="legend-percentage" id="sexeHommesPercent">0%</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #ec4899;"></div>
+                Femmes
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="sexeFemmesCount">0</span>
+                <span class="legend-percentage" id="sexeFemmesPercent">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Répartition par âge -->
+        <div class="stat-card">
+          <h3>🎂 Répartition par âge</h3>
+          <div id="ageStats">
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #ef4444;"></div>
+                &lt;12 ans
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="ageMoins12Count">0</span>
+                <span class="legend-percentage" id="ageMoins12Percent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-red" id="ageMoins12Progress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #f59e0b;"></div>
+                12-17 ans
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="age12_17Count">0</span>
+                <span class="legend-percentage" id="age12_17Percent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-orange" id="age12_17Progress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #10b981;"></div>
+                18-24 ans
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="age18_24Count">0</span>
+                <span class="legend-percentage" id="age18_24Percent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-green" id="age18_24Progress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                25-39 ans
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="age25_39Count">0</span>
+                <span class="legend-percentage" id="age25_39Percent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-blue" id="age25_39Progress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #8b5cf6;"></div>
+                40-59 ans
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="age40_59Count">0</span>
+                <span class="legend-percentage" id="age40_59Percent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-purple" id="age40_59Progress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #06b6d4;"></div>
+                60-69 ans
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="age60_69Count">0</span>
+                <span class="legend-percentage" id="age60_69Percent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="background: linear-gradient(90deg, #06b6d4, #67e8f9); width: 0%" id="age60_69Progress"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #84cc16;"></div>
+                70+ ans
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="age70plusCount">0</span>
+                <span class="legend-percentage" id="age70plusPercent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="background: linear-gradient(90deg, #84cc16, #bef264); width: 0%" id="age70plusProgress"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Répartition par fréquence -->
+        <div class="stat-card">
+          <h3>🔄 Fréquence de participation</h3>
+          <div class="donut-chart">
+            <svg>
+              <circle class="donut-bg" cx="100" cy="100" r="80"></circle>
+              <circle id="freqPremiere" cx="100" cy="100" r="80" stroke="#10b981" stroke-dasharray="0 502"></circle>
+              <circle id="freqRegulier" cx="100" cy="100" r="80" stroke="#3b82f6" stroke-dasharray="0 502"></circle>
+              <circle id="freqOccasionnel" cx="100" cy="100" r="80" stroke="#f59e0b" stroke-dasharray="0 502"></circle>
+            </svg>
+            <div class="donut-center">
+              <div class="donut-value" id="freqTotal">0</div>
+              <div class="donut-label">Total</div>
+            </div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #10b981;"></div>
+                Première fois
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="freqPremiereCount">0</span>
+                <span class="legend-percentage" id="freqPremierePercent">0%</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                Régulier
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="freqRegulierCount">0</span>
+                <span class="legend-percentage" id="freqRegulierPercent">0%</span>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #f59e0b;"></div>
+                Occasionnel
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="freqOccasionnelCount">0</span>
+                <span class="legend-percentage" id="freqOccasionnelPercent">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Répartition par statut -->
+        <div class="stat-card">
+          <h3>💼 Statut des bénéficiaires</h3>
+          <div id="statutStats">
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #ef4444;"></div>
+                Sans activité
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="statutSansActiviteCount">0</span>
+                <span class="legend-percentage" id="statutSansActivitePercent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-red" id="statutSansActiviteProgress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #10b981;"></div>
+                En activité
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="statutEnActiviteCount">0</span>
+                <span class="legend-percentage" id="statutEnActivitePercent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-green" id="statutEnActiviteProgress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                Scolarisé
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="statutScolariseCount">0</span>
+                <span class="legend-percentage" id="statutScolarisePercent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-blue" id="statutScolariseProgress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #8b5cf6;"></div>
+                Retraité
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="statutRetraiteCount">0</span>
+                <span class="legend-percentage" id="statutRetraitePercent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill progress-purple" id="statutRetraiteProgress" style="width: 0%"></div>
+            </div>
+            
+            <div class="legend-item">
+              <div class="legend-label">
+                <div class="legend-color" style="background: #64748b;"></div>
+                Non communiqué
+              </div>
+              <div class="legend-stats">
+                <span class="legend-count" id="statutNonCommuniqueCount">0</span>
+                <span class="legend-percentage" id="statutNonCommuniquePercent">0%</span>
+              </div>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="background: linear-gradient(90deg, #64748b, #94a3b8); width: 0%" id="statutNonCommuniqueProgress"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Répartition par activité -->
+        <div class="stat-card">
+          <h3>🎯 Activités les plus populaires</h3>
+          <div id="activiteStats">
+            <p style="text-align: center; color: #64748b;">Aucune donnée disponible</p>
+          </div>
+        </div>
+      </div>
+
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // Variables globales
+    let collectifData = [];
+    let selectedRows = new Set();
+
+    // Initialisation
+    window.onload = function() {
+      loadData();
+      document.getElementById('colDate').value = new Date().toISOString().split('T')[0];
+      initTabs();
+      updateStats();
+      updateTotalDisplay();
+    };
+
+    // Gestion des onglets
+    function initTabs() {
+      document.getElementById('btnForm').onclick = () => showSection('formSection', 'btnForm');
+      document.getElementById('btnStats').onclick = () => {
+        showSection('statsSection', 'btnStats');
+        setTimeout(updateCharts, 100); // Délai pour que les canvas soient visibles
+      };
+    }
+
+    function showSection(sectionId, btnId) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+      document.getElementById(sectionId).classList.add('active');
+      document.getElementById(btnId).classList.add('active');
+    }
+
+    // Gestion des compteurs avec validation
+    function updateCount(delta) {
+      const input = document.getElementById('colCount');
+      const newVal = Math.max(0, parseInt(input.value || 0) + delta);
+      input.value = newVal;
+      updateTotalDisplay();
+    }
+
+    function updateTotalDisplay() {
+      const total = parseInt(document.getElementById('colCount').value || 0);
+      document.getElementById('totalDisplay').textContent = total > 0 ? `(${total} max)` : '';
+    }
+
+    function changeCounter(id, delta) {
+      const totalParticipants = parseInt(document.getElementById('colCount').value || 0);
+      
+      if (totalParticipants === 0) {
+        showValidationAlert('Veuillez d\'abord saisir le nombre total de participants');
+        return;
+      }
+
+      // Construire l'ID de l'élément
+      let elementId = 'cnt' + id.charAt(0).toUpperCase() + id.slice(1);
+      if (id === 'sa') elementId = 'cntSa';
+      if (id === 'ea') elementId = 'cntEa';
+      if (id === 'nc') elementId = 'cntNc';
+      
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      
+      const currentVal = parseInt(el.textContent);
+      const newVal = Math.max(0, currentVal + delta);
+      
+      // Vérifier si on dépasse le total pour chaque catégorie
+      if (delta > 0) {
+        // Vérifier selon la catégorie
+        let categoryTotal = 0;
+        
+        if (['pf', 'pr', 'po'].includes(id)) {
+          // Catégorie participation
+          categoryTotal = parseInt(document.getElementById('cntPf').textContent) +
+                         parseInt(document.getElementById('cntPr').textContent) +
+                         parseInt(document.getElementById('cntPo').textContent);
+          if (id === 'pf') categoryTotal = categoryTotal - parseInt(document.getElementById('cntPf').textContent) + newVal;
+          if (id === 'pr') categoryTotal = categoryTotal - parseInt(document.getElementById('cntPr').textContent) + newVal;
+          if (id === 'po') categoryTotal = categoryTotal - parseInt(document.getElementById('cntPo').textContent) + newVal;
+        } else if (['m', 'f'].includes(id)) {
+          // Catégorie sexe
+          categoryTotal = parseInt(document.getElementById('cntM').textContent) +
+                         parseInt(document.getElementById('cntF').textContent);
+          if (id === 'm') categoryTotal = categoryTotal - parseInt(document.getElementById('cntM').textContent) + newVal;
+          if (id === 'f') categoryTotal = categoryTotal - parseInt(document.getElementById('cntF').textContent) + newVal;
+        } else if (['t0', 't12', 't18', 't25', 't40', 't60', 't70'].includes(id)) {
+          // Catégorie âge
+          categoryTotal = parseInt(document.getElementById('cntT0').textContent) +
+                         parseInt(document.getElementById('cntT12').textContent) +
+                         parseInt(document.getElementById('cntT18').textContent) +
+                         parseInt(document.getElementById('cntT25').textContent) +
+                         parseInt(document.getElementById('cntT40').textContent) +
+                         parseInt(document.getElementById('cntT60').textContent) +
+                         parseInt(document.getElementById('cntT70').textContent);
+          if (id === 't0') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT0').textContent) + newVal;
+          if (id === 't12') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT12').textContent) + newVal;
+          if (id === 't18') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT18').textContent) + newVal;
+          if (id === 't25') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT25').textContent) + newVal;
+          if (id === 't40') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT40').textContent) + newVal;
+          if (id === 't60') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT60').textContent) + newVal;
+          if (id === 't70') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT70').textContent) + newVal;
+        } else if (['sa', 'ea', 'sch', 'ret', 'nc'].includes(id)) {
+          // Catégorie statut
+          categoryTotal = parseInt(document.getElementById('cntSa').textContent) +
+                         parseInt(document.getElementById('cntEa').textContent) +
+                         parseInt(document.getElementById('cntSch').textContent) +
+                         parseInt(document.getElementById('cntRet').textContent) +
+                         parseInt(document.getElementById('cntNc').textContent);
+          if (id === 'sa') categoryTotal = categoryTotal - parseInt(document.getElementById('cntSa').textContent) + newVal;
+          if (id === 'ea') categoryTotal = categoryTotal - parseInt(document.getElementById('cntEa').textContent) + newVal;
+          if (id === 'sch') categoryTotal = categoryTotal - parseInt(document.getElementById('cntSch').textContent) + newVal;
+          if (id === 'ret') categoryTotal = categoryTotal - parseInt(document.getElementById('cntRet').textContent) + newVal;
+          if (id === 'nc') categoryTotal = categoryTotal - parseInt(document.getElementById('cntNc').textContent) + newVal;
+        }
+        
+        if (categoryTotal > totalParticipants) {
+          showValidationAlert(`Impossible de dépasser le total de ${totalParticipants} participants dans cette catégorie`);
+          return;
+        }
+      }
+      
+      el.textContent = newVal;
+      hideValidationAlert();
+    }
+
+    function getCurrentTotal() {
+      const counters = [
+        'cntPf', 'cntPr', 'cntPo', 'cntM', 'cntF', 
+        'cntT0', 'cntT12', 'cntT18', 'cntT25', 'cntT40', 'cntT60', 'cntT70',
+        'cntSa', 'cntEa', 'cntSch', 'cntRet', 'cntNc'
+      ];
+      
+      return counters.reduce((total, id) => {
+        const el = document.getElementById(id);
+        return total + (el ? parseInt(el.textContent) : 0);
+      }, 0);
+    }
+
+    function showValidationAlert(message) {
+      document.getElementById('validationMessage').textContent = message;
+      document.getElementById('validationAlert').classList.add('show');
+      setTimeout(hideValidationAlert, 3000);
+    }
+
+    function hideValidationAlert() {
+      document.getElementById('validationAlert').classList.remove('show');
+    }
+
+    // Réinitialisation du formulaire
+    document.getElementById('btnReset').onclick = function() {
+      if (confirm('Réinitialiser le formulaire ?')) {
+        resetForm();
+        showToast('Formulaire réinitialisé', 'success');
+      }
+    };
+
+    function resetForm() {
+      document.getElementById('colDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('colActivity').value = '';
+      document.getElementById('colCount').value = '0';
+      document.getElementById('collectNotes').value = '';
+      
+      ['Pf', 'Pr', 'Po', 'M', 'F', 'T0', 'T12', 'T18', 'T25', 'T40', 'T60', 'T70', 
+       'Sa', 'Ea', 'Sch', 'Ret', 'Nc'].forEach(id => {
+        const el = document.getElementById('cnt' + id);
+        if (el) el.textContent = '0';
+      });
+      
+      updateTotalDisplay();
+      hideValidationAlert();
+    }
+
+    // Sauvegarde des données
+    function saveCollectif() {
+      const activity = document.getElementById('colActivity').value;
+      const count = parseInt(document.getElementById('colCount').value || 0);
+      
+      if (!activity) {
+        showToast('Veuillez sélectionner une activité', 'error');
+        return;
+      }
+      
+      if (count === 0) {
+        showToast('Le nombre de participants doit être supérieur à 0', 'error');
+        return;
+      }
+      
+      const data = {
+        date: document.getElementById('colDate').value,
+        activity: activity,
+        count: count,
+        firstTime: parseInt(document.getElementById('cntPf').textContent),
+        regular: parseInt(document.getElementById('cntPr').textContent),
+        occasional: parseInt(document.getElementById('cntPo').textContent),
+        male: parseInt(document.getElementById('cntM').textContent),
+        female: parseInt(document.getElementById('cntF').textContent),
+        age0: parseInt(document.getElementById('cntT0').textContent),
+        age12: parseInt(document.getElementById('cntT12').textContent),
+        age18: parseInt(document.getElementById('cntT18').textContent),
+        age25: parseInt(document.getElementById('cntT25').textContent),
+        age40: parseInt(document.getElementById('cntT40').textContent),
+        age60: parseInt(document.getElementById('cntT60').textContent),
+        age70: parseInt(document.getElementById('cntT70').textContent),
+        statusSA: parseInt(document.getElementById('cntSa').textContent),
+        statusEA: parseInt(document.getElementById('cntEa').textContent),
+        statusSch: parseInt(document.getElementById('cntSch').textContent),
+        statusRet: parseInt(document.getElementById('cntRet').textContent),
+        statusNC: parseInt(document.getElementById('cntNc').textContent),
+        notes: document.getElementById('collectNotes').value
+      };
+      
+      collectifData.push(data);
+      showToast('Atelier enregistré avec succès', 'success');
+      
+      saveData();
+      displayTable();
+      updateStats();
+      resetForm();
+    }
+
+    // === VARIABLES ET FONCTIONS STATISTIQUES ===
+    
+    // Variables pour les graphiques
+    let charts = {};
+
+    // Mise à jour des graphiques avec le nouveau style
+    function updateCharts() {
+      if (collectifData.length === 0) {
+        document.getElementById('totalWorkshops').textContent = '0';
+        document.getElementById('totalParticipants').textContent = '0';
+        document.getElementById('avgParticipants').textContent = '0';
+        document.getElementById('dateRange').textContent = 'Aucune donnée';
+        resetNewStats();
+        return;
+      }
+      
+      // Vue d'ensemble
+      const totalWorkshops = collectifData.length;
+      const totalParticipants = collectifData.reduce((sum, item) => sum + item.count, 0);
+      const avgParticipants = Math.round(totalParticipants / totalWorkshops * 10) / 10;
+      
+      document.getElementById('totalWorkshops').textContent = totalWorkshops;
+      document.getElementById('totalParticipants').textContent = totalParticipants;
+      document.getElementById('avgParticipants').textContent = avgParticipants;
+      
+      // Date range
+      const dates = collectifData.map(item => new Date(item.date));
+      const minDate = new Date(Math.min(...dates));
+      const maxDate = new Date(Math.max(...dates));
+      document.getElementById('dateRange').textContent = 
+        `Du ${formatDate(minDate.toISOString().split('T')[0])} au ${formatDate(maxDate.toISOString().split('T')[0])}`;
+      
+      // Calculer les totaux pour les nouveaux graphiques
+      let totalHommes = 0, totalFemmes = 0;
+      let totalPremiere = 0, totalRegulier = 0, totalOccasionnel = 0;
+      let totalMoins12 = 0, totalAge12_17 = 0, totalAge18_24 = 0, totalAge25_39 = 0;
+      let totalAge40_59 = 0, totalAge60_69 = 0, totalAge70plus = 0;
+      let totalSansActivite = 0, totalEnActivite = 0, totalScolarise = 0, totalRetraite = 0, totalNonCommunique = 0;
+      let activites = {};
+
+      collectifData.forEach(item => {
+        totalHommes += item.male;
+        totalFemmes += item.female;
+        totalPremiere += item.firstTime;
+        totalRegulier += item.regular;
+        totalOccasionnel += item.occasional;
+        totalMoins12 += item.age0;
+        totalAge12_17 += item.age12;
+        totalAge18_24 += item.age18;
+        totalAge25_39 += item.age25;
+        totalAge40_59 += item.age40;
+        totalAge60_69 += item.age60;
+        totalAge70plus += item.age70;
+        totalSansActivite += item.statusSA;
+        totalEnActivite += item.statusEA;
+        totalScolarise += item.statusSch;
+        totalRetraite += item.statusRet;
+        totalNonCommunique += item.statusNC;
+        
+        // Activités
+        if (activites[item.activity]) {
+          activites[item.activity] += item.count;
+        } else {
+          activites[item.activity] = item.count;
+        }
+      });
+
+      // Mettre à jour les nouveaux graphiques
+      updateSexeChart(totalHommes, totalFemmes);
+      updateFrequenceChart(totalPremiere, totalRegulier, totalOccasionnel);
+      updateAgeStats(totalMoins12, totalAge12_17, totalAge18_24, totalAge25_39, totalAge40_59, totalAge60_69, totalAge70plus, totalParticipants);
+      updateStatutStats(totalSansActivite, totalEnActivite, totalScolarise, totalRetraite, totalNonCommunique, totalParticipants);
+      updateActiviteStats(activites);
+    }
+
+    function resetNewStats() {
+      updateSexeChart(0, 0);
+      updateFrequenceChart(0, 0, 0);
+      updateAgeStats(0, 0, 0, 0, 0, 0, 0, 0);
+      updateStatutStats(0, 0, 0, 0, 0, 0);
+      updateActiviteStats({});
+    }
+
+    function updateSexeChart(hommes, femmes) {
+      const total = hommes + femmes;
+      
+      document.getElementById('sexeTotal').textContent = total;
+      document.getElementById('sexeHommesCount').textContent = hommes;
+      document.getElementById('sexeFemmesCount').textContent = femmes;
+      
+      if (total > 0) {
+        const hommesPercent = Math.round(hommes / total * 100);
+        const femmesPercent = Math.round(femmes / total * 100);
+        
+        document.getElementById('sexeHommesPercent').textContent = hommesPercent + '%';
+        document.getElementById('sexeFemmesPercent').textContent = femmesPercent + '%';
+        
+        // Calculer les dasharray pour le donut
+        const circumference = 2 * Math.PI * 80;
+        const hommesLength = (hommes / total) * circumference;
+        const femmesLength = (femmes / total) * circumference;
+        
+        document.getElementById('sexeHommes').style.strokeDasharray = `${hommesLength} ${circumference}`;
+        document.getElementById('sexeFemmes').style.strokeDasharray = `${femmesLength} ${circumference}`;
+        document.getElementById('sexeFemmes').style.strokeDashoffset = -hommesLength;
+      } else {
+        document.getElementById('sexeHommesPercent').textContent = '0%';
+        document.getElementById('sexeFemmesPercent').textContent = '0%';
+        document.getElementById('sexeHommes').style.strokeDasharray = '0 502';
+        document.getElementById('sexeFemmes').style.strokeDasharray = '0 502';
+      }
+    }
+
+    function updateFrequenceChart(premiere, regulier, occasionnel) {
+      const total = premiere + regulier + occasionnel;
+      
+      document.getElementById('freqTotal').textContent = total;
+      document.getElementById('freqPremiereCount').textContent = premiere;
+      document.getElementById('freqRegulierCount').textContent = regulier;
+      document.getElementById('freqOccasionnelCount').textContent = occasionnel;
+      
+      if (total > 0) {
+        const premierePercent = Math.round(premiere / total * 100);
+        const regulierPercent = Math.round(regulier / total * 100);
+        const occasionnelPercent = Math.round(occasionnel / total * 100);
+        
+        document.getElementById('freqPremierePercent').textContent = premierePercent + '%';
+        document.getElementById('freqRegulierPercent').textContent = regulierPercent + '%';
+        document.getElementById('freqOccasionnelPercent').textContent = occasionnelPercent + '%';
+        
+        // Calculer les dasharray pour le donut
+        const circumference = 2 * Math.PI * 80;
+        const premiereLength = (premiere / total) * circumference;
+        const regulierLength = (regulier / total) * circumference;
+        const occasionnelLength = (occasionnel / total) * circumference;
+        
+        document.getElementById('freqPremiere').style.strokeDasharray = `${premiereLength} ${circumference}`;
+        document.getElementById('freqRegulier').style.strokeDasharray = `${regulierLength} ${circumference}`;
+        document.getElementById('freqOccasionnel').style.strokeDasharray = `${occasionnelLength} ${circumference}`;
+        
+        document.getElementById('freqRegulier').style.strokeDashoffset = -premiereLength;
+        document.getElementById('freqOccasionnel').style.strokeDashoffset = -(premiereLength + regulierLength);
+      } else {
+        document.getElementById('freqPremierePercent').textContent = '0%';
+        document.getElementById('freqRegulierPercent').textContent = '0%';
+        document.getElementById('freqOccasionnelPercent').textContent = '0%';
+        document.getElementById('freqPremiere').style.strokeDasharray = '0 502';
+        document.getElementById('freqRegulier').style.strokeDasharray = '0 502';
+        document.getElementById('freqOccasionnel').style.strokeDasharray = '0 502';
+      }
+    }
+
+    function updateAgeStats(moins12, age12_17, age18_24, age25_39, age40_59, age60_69, age70plus, total) {
+      const ages = [
+        { id: 'ageMoins12', count: moins12 },
+        { id: 'age12_17', count: age12_17 },
+        { id: 'age18_24', count: age18_24 },
+        { id: 'age25_39', count: age25_39 },
+        { id: 'age40_59', count: age40_59 },
+        { id: 'age60_69', count: age60_69 },
+        { id: 'age70plus', count: age70plus }
+      ];
+
+      ages.forEach(age => {
+        document.getElementById(age.id + 'Count').textContent = age.count;
+        if (total > 0) {
+          const percent = Math.round(age.count / total * 100);
+          document.getElementById(age.id + 'Percent').textContent = percent + '%';
+          document.getElementById(age.id + 'Progress').style.width = percent + '%';
+        } else {
+          document.getElementById(age.id + 'Percent').textContent = '0%';
+          document.getElementById(age.id + 'Progress').style.width = '0%';
+        }
+      });
+    }
+
+    function updateStatutStats(sansActivite, enActivite, scolarise, retraite, nonCommunique, total) {
+      const statuts = [
+        { id: 'statutSansActivite', count: sansActivite },
+        { id: 'statutEnActivite', count: enActivite },
+        { id: 'statutScolarise', count: scolarise },
+        { id: 'statutRetraite', count: retraite },
+        { id: 'statutNonCommunique', count: nonCommunique }
+      ];
+
+      statuts.forEach(statut => {
+        document.getElementById(statut.id + 'Count').textContent = statut.count;
+        if (total > 0) {
+          const percent = Math.round(statut.count / total * 100);
+          document.getElementById(statut.id + 'Percent').textContent = percent + '%';
+          document.getElementById(statut.id + 'Progress').style.width = percent + '%';
+        } else {
+          document.getElementById(statut.id + 'Percent').textContent = '0%';
+          document.getElementById(statut.id + 'Progress').style.width = '0%';
+        }
+      });
+    }
+
+    function updateActiviteStats(activites) {
+      const activiteStatsDiv = document.getElementById('activiteStats');
+      activiteStatsDiv.innerHTML = '';
+
+      if (Object.keys(activites).length === 0) {
+        activiteStatsDiv.innerHTML = '<p style="text-align: center; color: #64748b;">Aucune donnée disponible</p>';
+        return;
+      }
+
+      // Trier les activités par nombre de participants (décroissant)
+      const sortedActivites = Object.entries(activites)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 10); // Limiter aux 10 premières
+
+      const maxParticipants = Math.max(...Object.values(activites));
+
+      sortedActivites.forEach(([activite, participants]) => {
+        const percent = maxParticipants > 0 ? (participants / maxParticipants) * 100 : 0;
+        
+        const activiteDiv = document.createElement('div');
+        activiteDiv.innerHTML = `
+          <div class="legend-item">
+            <div class="legend-label">
+              <div class="legend-color" style="background: linear-gradient(90deg, #3b82f6, #60a5fa);"></div>
+              ${activite}
+            </div>
+            <div class="legend-stats">
+              <span class="legend-count">${participants}</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill progress-blue" style="width: ${percent}%"></div>
+          </div>
+        `;
+        activiteStatsDiv.appendChild(activiteDiv);
+      });
+    }
+
+    // Export PDF des statistiques
+    function exportStatsPDF() {
+      if (collectifData.length === 0) {
+        showToast('Aucune donnée à exporter', 'error');
+        return;
+      }
+      
+      showToast('Fonctionnalité PDF en développement', 'info');
+    }
+
+    function drawActivitiesChart() {
+      const ctx = document.getElementById('chartActivities').getContext('2d');
+      
+      // Détruire le graphique existant
+      if (charts.activities) {
+        charts.activities.destroy();
+      }
+      
+      const activities = {};
+      collectifData.forEach(item => {
+        activities[item.activity] = (activities[item.activity] || 0) + item.count;
+      });
+      
+      const sortedActivities = Object.entries(activities).sort((a, b) => b[1] - a[1]);
+      const totalParticipants = Object.values(activities).reduce((a, b) => a + b, 0);
+      
+      const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#fa709a', '#fee140', '#30cfd0'];
+      
+      charts.activities = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: sortedActivities.map(a => a[0]),
+          datasets: [{
+            data: sortedActivities.map(a => a[1]),
+            backgroundColor: colors.slice(0, sortedActivities.length),
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+      
+      // Légende personnalisée
+      const legend = document.getElementById('activitiesLegend');
+      legend.innerHTML = sortedActivities.map((item, i) => {
+        const percentage = ((item[1] / totalParticipants) * 100).toFixed(1);
+        return `
+          <div class="legend-item">
+            <div class="legend-label">
+              <span class="legend-color" style="background: ${colors[i]}"></span>
+              ${item[0]}
+            </div>
+            <div class="legend-stats">
+              <span class="legend-count">${item[1]}</span>
+              <span class="legend-percentage">${percentage}%</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function drawGenderChart() {
+      const ctx = document.getElementById('chartGender').getContext('2d');
+      
+      if (charts.gender) {
+        charts.gender.destroy();
+      }
+      
+      const male = collectifData.reduce((sum, item) => sum + item.male, 0);
+      const female = collectifData.reduce((sum, item) => sum + item.female, 0);
+      const total = male + female;
+      
+      if (total === 0) return;
+      
+      charts.gender = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: ['Hommes', 'Femmes'],
+          datasets: [{
+            data: [male, female],
+            backgroundColor: ['#667eea', '#f093fb'],
+            borderWidth: 2,
+            borderColor: '#fff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
+      
+      // Légende
+      const legend = document.getElementById('genderLegend');
+      legend.innerHTML = `
+        <div class="legend-item">
+          <div class="legend-label">
+            <span class="legend-color" style="background: #667eea"></span>
+            Hommes
+          </div>
+          <div class="legend-stats">
+            <span class="legend-count">${male}</span>
+            <span class="legend-percentage">${((male/total)*100).toFixed(1)}%</span>
+          </div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-label">
+            <span class="legend-color" style="background: #f093fb"></span>
+            Femmes
+          </div>
+          <div class="legend-stats">
+            <span class="legend-count">${female}</span>
+            <span class="legend-percentage">${((female/total)*100).toFixed(1)}%</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // Affichage du tableau
+    function displayTable() {
+      const tbody = document.getElementById('tbodyCollectif');
+      tbody.innerHTML = '';
+      
+      collectifData.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="select-col"><input type="checkbox" onchange="toggleRow(${index})" ${selectedRows.has(index) ? 'checked' : ''}></td>
+          <td>${formatDate(item.date)}</td>
+          <td>${item.activity}</td>
+          <td>${item.count}</td>
+          <td>${item.firstTime}</td>
+          <td>${item.regular}</td>
+          <td>${item.occasional}</td>
+          <td>${item.male}</td>
+          <td>${item.female}</td>
+          <td>
+            <button class="action-btn" onclick="viewDetails(${index})" title="Voir détails">👁️</button>
+            <button class="action-btn" onclick="deleteRow(${index})" title="Supprimer">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Fonctions du tableau
+    function toggleAll() {
+      const isChecked = document.getElementById('selectAll').checked;
+      document.querySelectorAll('#tbodyCollectif input[type="checkbox"]').forEach((cb, i) => {
+        cb.checked = isChecked;
+        if (isChecked) selectedRows.add(i);
+        else selectedRows.delete(i);
+      });
+    }
+
+    function toggleRow(index) {
+      if (selectedRows.has(index)) selectedRows.delete(index);
+      else selectedRows.add(index);
+    }
+
+    function deleteRow(index) {
+      if (confirm('Supprimer cet atelier ?')) {
+        collectifData.splice(index, 1);
+        saveData();
+        displayTable();
+        updateStats();
+        showToast('Atelier supprimé', 'success');
+      }
+    }
+
+    function viewDetails(index) {
+      const item = collectifData[index];
+      
+      const detailsHTML = `
+        <div style="padding: 20px;">
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📅 Informations générales</h3>
+            <p><strong>Date:</strong> ${formatDate(item.date)}</p>
+            <p><strong>Activité:</strong> ${item.activity}</p>
+            <p><strong>Participants:</strong> ${item.count}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">🔄 Types de participation</h3>
+            <p><strong>Première fois:</strong> ${item.firstTime}</p>
+            <p><strong>Régulier:</strong> ${item.regular}</p>
+            <p><strong>Occasionnel:</strong> ${item.occasional}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">👥 Répartition par genre</h3>
+            <p><strong>Hommes:</strong> ${item.male}</p>
+            <p><strong>Femmes:</strong> ${item.female}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📊 Tranches d'âge</h3>
+            <p><strong>&lt;12 ans:</strong> ${item.age0}</p>
+            <p><strong>12-17 ans:</strong> ${item.age12}</p>
+            <p><strong>18-24 ans:</strong> ${item.age18}</p>
+            <p><strong>25-39 ans:</strong> ${item.age25}</p>
+            <p><strong>40-59 ans:</strong> ${item.age40}</p>
+            <p><strong>60-69 ans:</strong> ${item.age60}</p>
+            <p><strong>70 ans et +:</strong> ${item.age70}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">💼 Statuts</h3>
+            <p><strong>Sans activité:</strong> ${item.statusSA}</p>
+            <p><strong>En activité:</strong> ${item.statusEA}</p>
+            <p><strong>Scolarisé:</strong> ${item.statusSch}</p>
+            <p><strong>Retraité:</strong> ${item.statusRet}</p>
+            <p><strong>Non communiqué:</strong> ${item.statusNC}</p>
+          </div>
+          
+          ${item.notes ? `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📝 Notes</h3>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">${item.notes}</div>
+          </div>
+          ` : ''}
+          
+          <div style="text-align: center; margin-top: 20px;">
+            <button onclick="closeDetailsModal()" style="background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Fermer</button>
+          </div>
+        </div>
+      `;
+      
+      // Créer et afficher la modal
+      let modal = document.getElementById('detailsModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'detailsModal';
+        modal.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        `;
+        document.body.appendChild(modal);
+      }
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+          ${detailsHTML}
+        </div>
+      `;
+      
+      modal.style.display = 'flex';
+    }
+
+    function closeDetailsModal() {
+      const modal = document.getElementById('detailsModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    function clearAll() {
+      if (confirm('Supprimer toutes les données ? Cette action est irréversible.')) {
+        collectifData = [];
+        selectedRows.clear();
+        saveData();
+        displayTable();
+        updateStats();
+        showToast('Toutes les données ont été supprimées', 'success');
+      }
+    }
+
+    // Export Excel
+    function exportXLSX() {
+      if (collectifData.length === 0) {
+        showToast('Aucune donnée à exporter', 'error');
+        return;
+      }
+      
+      const ws_data = [
+        ['Date', 'Activité', 'Participants', 'Première fois', 'Régulier', 'Occasionnel', 
+         'Hommes', 'Femmes', '<12 ans', '12-17 ans', '18-24 ans', '25-39 ans', 
+         '40-59 ans', '60-69 ans', '70 ans +', 'Sans activité', 'En activité', 
+         'Scolarisé', 'Retraité', 'Non communiqué', 'Notes']
+      ];
+      
+      collectifData.forEach(item => {
+        ws_data.push([
+          formatDate(item.date),
+          item.activity,
+          item.count,
+          item.firstTime,
+          item.regular,
+          item.occasional,
+          item.male,
+          item.female,
+          item.age0,
+          item.age12,
+          item.age18,
+          item.age25,
+          item.age40,
+          item.age60,
+          item.age70,
+          item.statusSA,
+          item.statusEA,
+          item.statusSch,
+          item.statusRet,
+          item.statusNC,
+          item.notes || ''
+        ]);
+      });
+      
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ateliers');
+      XLSX.writeFile(wb, `ateliers_${new Date().toISOString().split('T')[0]}.xlsx`);
+      showToast('Export Excel réussi', 'success');
+    }
+
+    // Mise à jour des statistiques
+    function updateStats() {
+      const totalAteliers = collectifData.length;
+      const totalParticipants = collectifData.reduce((sum, item) => sum + item.count, 0);
+      
+      document.getElementById('cntAteliers').textContent = totalAteliers;
+      document.getElementById('cntParticipants').textContent = totalParticipants;
+    }
+
+    // Fonctions utilitaires
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('fr-FR');
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = `toast ${type} show`;
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Sauvegarde/chargement des données
+    function saveData() {
+      try {
+        localStorage.setItem('collectifData', JSON.stringify(collectifData));
+      } catch (e) {
+        console.warn('Impossible de sauvegarder dans localStorage');
+      }
+    }
+
+    function loadData() {
+      try {
+        const saved = localStorage.getItem('collectifData');
+        if (saved) {
+          collectifData = JSON.parse(saved);
+          displayTable();
+          updateStats();
+        }
+      } catch (e) {
+        console.warn('Impossible de charger depuis localStorage');
+        collectifData = [];
+      }
+    }
+
+  </script>
+
+  <!-- Bibliothèques externes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+</body>
+</html>
