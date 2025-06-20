@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Suivi des Ateliers Collectifs</title>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
   <!-- Librairies externes -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -17,513 +22,6 @@
       padding: 0;
       box-sizing: border-box;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    }
-
-    function drawAgeChart() {
-      const ctx = document.getElementById('chartAge').getContext('2d');
-      
-      if (charts.age) {
-        charts.age.destroy();
-      }
-      
-      const ageGroups = {
-        '<12 ans': collectifData.reduce((sum, item) => sum + item.age0, 0),
-        '12-17 ans': collectifData.reduce((sum, item) => sum + item.age12, 0),
-        '18-24 ans': collectifData.reduce((sum, item) => sum + item.age18, 0),
-        '25-39 ans': collectifData.reduce((sum, item) => sum + item.age25, 0),
-        '40-59 ans': collectifData.reduce((sum, item) => sum + item.age40, 0),
-        '60-69 ans': collectifData.reduce((sum, item) => sum + item.age60, 0),
-        '70 ans +': collectifData.reduce((sum, item) => sum + item.age70, 0)
-      };
-      
-      const total = Object.values(ageGroups).reduce((a, b) => a + b, 0);
-      if (total === 0) return;
-      
-      const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#fa709a', '#fee140'];
-      
-      charts.age = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: Object.keys(ageGroups),
-          datasets: [{
-            data: Object.values(ageGroups),
-            backgroundColor: colors,
-            borderWidth: 2,
-            borderColor: '#fff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: { stepSize: 1 }
-            },
-            x: {
-              ticks: {
-                maxRotation: 45,
-                minRotation: 45
-              }
-            }
-          }
-        }
-      });
-      
-      // Légende
-      const legend = document.getElementById('statusLegend');
-      legend.innerHTML = Object.entries(statuses).map((item, i) => {
-        const percentage = ((item[1] / total) * 100).toFixed(1);
-        return `
-          <div class="legend-item">
-            <div class="legend-label">
-              <span class="legend-color" style="background: ${colors[i]}"></span>
-              ${item[0]}
-            </div>
-            <div class="legend-stats">
-              <span class="legend-count">${item[1]}</span>
-              <span class="legend-percentage">${percentage}%</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }ero: true,
-              ticks: { stepSize: 1 }
-            }
-          }
-        }
-      });
-      
-      // Légende
-      const legend = document.getElementById('ageLegend');
-      legend.innerHTML = Object.entries(ageGroups).map((item, i) => {
-        const percentage = ((item[1] / total) * 100).toFixed(1);
-        return `
-          <div class="legend-item">
-            <div class="legend-label">
-              <span class="legend-color" style="background: ${colors[i]}"></span>
-              ${item[0]}
-            </div>
-            <div class="legend-stats">
-              <span class="legend-count">${item[1]}</span>
-              <span class="legend-percentage">${percentage}%</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function drawParticipationChart() {
-      const ctx = document.getElementById('chartParticipation').getContext('2d');
-      
-      if (charts.participation) {
-        charts.participation.destroy();
-      }
-      
-      const firstTime = collectifData.reduce((sum, item) => sum + item.firstTime, 0);
-      const regular = collectifData.reduce((sum, item) => sum + item.regular, 0);
-      const occasional = collectifData.reduce((sum, item) => sum + item.occasional, 0);
-      const total = firstTime + regular + occasional;
-      
-      if (total === 0) return;
-      
-      charts.participation = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Première fois', 'Régulier', 'Occasionnel'],
-          datasets: [{
-            data: [firstTime, regular, occasional],
-            backgroundColor: ['#10b981', '#667eea', '#f093fb'],
-            borderWidth: 2,
-            borderColor: '#fff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          }
-        }
-      });
-      
-      // Légende
-      const legend = document.getElementById('participationLegend');
-      const data = [
-        { label: 'Première fois', value: firstTime, color: '#10b981' },
-        { label: 'Régulier', value: regular, color: '#667eea' },
-        { label: 'Occasionnel', value: occasional, color: '#f093fb' }
-      ];
-      
-      legend.innerHTML = data.map(item => {
-        const percentage = ((item.value / total) * 100).toFixed(1);
-        return `
-          <div class="legend-item">
-            <div class="legend-label">
-              <span class="legend-color" style="background: ${item.color}"></span>
-              ${item.label}
-            </div>
-            <div class="legend-stats">
-              <span class="legend-count">${item.value}</span>
-              <span class="legend-percentage">${percentage}%</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function drawStatusChart() {
-      const ctx = document.getElementById('chartStatus').getContext('2d');
-      
-      if (charts.status) {
-        charts.status.destroy();
-      }
-      
-      const statuses = {
-        'Sans activité': collectifData.reduce((sum, item) => sum + item.statusSA, 0),
-        'En activité': collectifData.reduce((sum, item) => sum + item.statusEA, 0),
-        'Scolarisé': collectifData.reduce((sum, item) => sum + item.statusSch, 0),
-        'Retraité': collectifData.reduce((sum, item) => sum + item.statusRet, 0),
-        'Non communiqué': collectifData.reduce((sum, item) => sum + item.statusNC, 0)
-      };
-      
-      const total = Object.values(statuses).reduce((a, b) => a + b, 0);
-      if (total === 0) return;
-      
-      const colors = ['#dc2626', '#10b981', '#3b82f6', '#f59e0b', '#6b7280'];
-      
-      charts.status = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: Object.keys(statuses),
-          datasets: [{
-            data: Object.values(statuses),
-            backgroundColor: colors,
-            borderWidth: 2,
-            borderColor: '#fff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
-          scales: {
-            y: {
-              beginAtZero: true,
-              ticks: { stepSize: 1 }
-            },
-            x: {
-              ticks: {
-                maxRotation: 45,
-                minRotation: 45
-              }
-            }
-          }
-        }
-      });
-      
-      // Légende
-      const legend = document.getElementById('statusLegend');
-      legend.innerHTML = Object.entries(statuses).map((item, i) => {
-        const percentage = ((item[1] / total) * 100).toFixed(1);
-        return `
-          <div class="legend-item">
-            <div class="legend-label">
-              <span class="legend-color" style="background: ${colors[i]}"></span>
-              ${item[0]}
-            </div>
-            <div class="legend-stats">
-              <span class="legend-count">${item[1]}</span>
-              <span class="legend-percentage">${percentage}%</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }ero: true,
-              ticks: { stepSize: 1 }
-            },
-            x: {
-              ticks: {
-                maxRotation: 45,
-                minRotation: 45
-              }
-            }
-          }
-        }
-      });
-      
-      // Légende
-      const legend = document.getElementById('statusLegend');
-      legend.innerHTML = Object.entries(statuses).map((item, i) => {
-        const percentage = ((item[1] / total) * 100).toFixed(1);
-        return `
-          <div class="legend-item">
-            <div class="legend-label">
-              <span class="legend-color" style="background: ${colors[i]}"></span>
-              ${item[0]}
-            </div>
-            <div class="legend-stats">
-              <span class="legend-count">${item[1]}</span>
-              <span class="legend-percentage">${percentage}%</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    // Affichage du tableau
-    function displayTable() {
-      const tbody = document.getElementById('tbodyCollectif');
-      tbody.innerHTML = '';
-      
-      collectifData.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="select-col"><input type="checkbox" onchange="toggleRow(${index})" ${selectedRows.has(index) ? 'checked' : ''}></td>
-          <td>${formatDate(item.date)}</td>
-          <td>${item.activity}</td>
-          <td>${item.count}</td>
-          <td>${item.firstTime}</td>
-          <td>${item.regular}</td>
-          <td>${item.occasional}</td>
-          <td>${item.male}</td>
-          <td>${item.female}</td>
-          <td>
-            <button class="action-btn" onclick="viewDetails(${index})" title="Voir détails">👁️</button>
-            <button class="action-btn" onclick="deleteRow(${index})" title="Supprimer">🗑️</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // Fonctions du tableau
-    function toggleAll() {
-      const isChecked = document.getElementById('selectAll').checked;
-      document.querySelectorAll('#tbodyCollectif input[type="checkbox"]').forEach((cb, i) => {
-        cb.checked = isChecked;
-        if (isChecked) selectedRows.add(i);
-        else selectedRows.delete(i);
-      });
-    }
-
-    function toggleRow(index) {
-      if (selectedRows.has(index)) selectedRows.delete(index);
-      else selectedRows.add(index);
-    }
-
-    function deleteRow(index) {
-      if (confirm('Supprimer cet atelier ?')) {
-        collectifData.splice(index, 1);
-        saveData();
-        displayTable();
-        updateStats();
-        showToast('Atelier supprimé', 'success');
-      }
-    }
-
-    function viewDetails(index) {
-      const item = collectifData[index];
-      
-      const detailsHTML = `
-        <div style="padding: 20px;">
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">📅 Informations générales</h3>
-            <p><strong>Date:</strong> ${formatDate(item.date)}</p>
-            <p><strong>Activité:</strong> ${item.activity}</p>
-            <p><strong>Participants:</strong> ${item.count}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">🔄 Types de participation</h3>
-            <p><strong>Première fois:</strong> ${item.firstTime}</p>
-            <p><strong>Régulier:</strong> ${item.regular}</p>
-            <p><strong>Occasionnel:</strong> ${item.occasional}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">👥 Répartition par genre</h3>
-            <p><strong>Hommes:</strong> ${item.male}</p>
-            <p><strong>Femmes:</strong> ${item.female}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">📊 Tranches d'âge</h3>
-            <p><strong>&lt;12 ans:</strong> ${item.age0}</p>
-            <p><strong>12-17 ans:</strong> ${item.age12}</p>
-            <p><strong>18-24 ans:</strong> ${item.age18}</p>
-            <p><strong>25-39 ans:</strong> ${item.age25}</p>
-            <p><strong>40-59 ans:</strong> ${item.age40}</p>
-            <p><strong>60-69 ans:</strong> ${item.age60}</p>
-            <p><strong>70 ans et +:</strong> ${item.age70}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">💼 Statuts</h3>
-            <p><strong>Sans activité:</strong> ${item.statusSA}</p>
-            <p><strong>En activité:</strong> ${item.statusEA}</p>
-            <p><strong>Scolarisé:</strong> ${item.statusSch}</p>
-            <p><strong>Retraité:</strong> ${item.statusRet}</p>
-            <p><strong>Non communiqué:</strong> ${item.statusNC}</p>
-          </div>
-          
-          ${item.notes ? `
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">📝 Notes</h3>
-            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">${item.notes}</div>
-          </div>
-          ` : ''}
-          
-          <div style="text-align: center; margin-top: 20px;">
-            <button onclick="closeDetailsModal()" style="background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Fermer</button>
-          </div>
-        </div>
-      `;
-      
-      // Créer et afficher la modal
-      let modal = document.getElementById('detailsModal');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'detailsModal';
-        modal.style.cssText = `
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        `;
-        document.body.appendChild(modal);
-      }
-      
-      modal.innerHTML = `
-        <div style="background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-          ${detailsHTML}
-        </div>
-      `;
-      
-      modal.style.display = 'flex';
-    }
-
-    function closeDetailsModal() {
-      const modal = document.getElementById('detailsModal');
-      if (modal) {
-        modal.style.display = 'none';
-      }
-    }
-
-    function clearAll() {
-      if (confirm('Supprimer toutes les données ? Cette action est irréversible.')) {
-        collectifData = [];
-        selectedRows.clear();
-        saveData();
-        displayTable();
-        updateStats();
-        showToast('Toutes les données ont été supprimées', 'success');
-      }
-    }
-
-    // Export Excel
-    function exportXLSX() {
-      if (collectifData.length === 0) {
-        showToast('Aucune donnée à exporter', 'error');
-        return;
-      }
-      
-      const ws_data = [
-        ['Date', 'Activité', 'Participants', 'Première fois', 'Régulier', 'Occasionnel', 
-         'Hommes', 'Femmes', '<12 ans', '12-17 ans', '18-24 ans', '25-39 ans', 
-         '40-59 ans', '60-69 ans', '70 ans +', 'Sans activité', 'En activité', 
-         'Scolarisé', 'Retraité', 'Non communiqué', 'Notes']
-      ];
-      
-      collectifData.forEach(item => {
-        ws_data.push([
-          formatDate(item.date),
-          item.activity,
-          item.count,
-          item.firstTime,
-          item.regular,
-          item.occasional,
-          item.male,
-          item.female,
-          item.age0,
-          item.age12,
-          item.age18,
-          item.age25,
-          item.age40,
-          item.age60,
-          item.age70,
-          item.statusSA,
-          item.statusEA,
-          item.statusSch,
-          item.statusRet,
-          item.statusNC,
-          item.notes || ''
-        ]);
-      });
-      
-      const ws = XLSX.utils.aoa_to_sheet(ws_data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Ateliers');
-      XLSX.writeFile(wb, `ateliers_${new Date().toISOString().split('T')[0]}.xlsx`);
-      showToast('Export Excel réussi', 'success');
-    }
-
-    // Mise à jour des statistiques
-    function updateStats() {
-      const totalAteliers = collectifData.length;
-      const totalParticipants = collectifData.reduce((sum, item) => sum + item.count, 0);
-      
-      document.getElementById('cntAteliers').textContent = totalAteliers;
-      document.getElementById('cntParticipants').textContent = totalParticipants;
-    }
-
-    // Fonctions utilitaires
-    function formatDate(dateStr) {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('fr-FR');
-    }
-
-    function showToast(message, type = 'info') {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.className = `toast ${type} show`;
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
-    }
-
-    // Sauvegarde/chargement des données
-    function saveData() {
-      try {
-        localStorage.setItem('collectifData', JSON.stringify(collectifData));
-      } catch (e) {
-        console.warn('Impossible de sauvegarder dans localStorage');
-      }
-    }
-
-    function loadData() {
-      try {
-        const saved = localStorage.getItem('collectifData');
-        if (saved) {
-          collectifData = JSON.parse(saved);
-          displayTable();
-          updateStats();
-        }
-      } catch (e) {
-        console.warn('Impossible de charger depuis localStorage');
-        collectifData = [];
-      }
     }
     
     body {
@@ -588,6 +86,55 @@
         opacity: 1;
         transform: translateY(0);
       }
+    }
+
+    /* Statut de connexion */
+    .connection-status {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 8px 16px;
+      border-radius: 50px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 1000;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .connection-status.connected {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+    }
+
+    .connection-status.connecting {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: white;
+    }
+
+    .connection-status.error {
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+    }
+
+    .sync-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top: 2px solid white;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
     
     .tabs {
@@ -806,6 +353,12 @@
       transform: translateY(-2px);
     }
 
+    .btn-submit:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     /* Alerte de validation */
     .validation-alert {
       background: #fef2f2;
@@ -977,6 +530,10 @@
     
     .toast.success {
       background: #10b981;
+    }
+
+    .toast.info {
+      background: #3b82f6;
     }
 
     /* === STYLES STATISTIQUES AMÉLIORÉS === */
@@ -1267,12 +824,21 @@
   </style>
 </head>
 <body>
+  <!-- Statut de connexion -->
+  <div id="connectionStatus" class="connection-status connecting">
+    <div class="sync-indicator">
+      <div class="sync-spinner"></div>
+      <span id="statusText">Connexion...</span>
+    </div>
+  </div>
+
   <div class="container">
 
     <!-- Header -->
     <div class="header">
       <div style="text-align: center; width: 100%; position: relative; z-index: 1;">
         <h1>🎨 Suivi des Activités d'Animation</h1>
+        <p style="opacity: 0.9; margin-top: 8px;">Synchronisé en temps réel avec Firebase</p>
       </div>
     </div>
 
@@ -1398,7 +964,7 @@
         <label>Notes sur l'atelier</label>
         <textarea id="collectNotes" placeholder="Remarques…"></textarea>
 
-        <button class="btn-submit" onclick="saveCollectif()">💾 Enregistrer l'atelier collectif</button>
+        <button class="btn-submit" id="btnSave" onclick="saveCollectif()">💾 Enregistrer l'atelier collectif</button>
       </div>
 
       <!-- Tableau -->
@@ -1433,6 +999,8 @@
         </div>
       </div>
     </div>
+
+    <!-- Section Statistiques -->
     <div id="statsSection" class="section">
       <div class="stats-header">
         <h1>📊 Mes statistiques</h1>
@@ -1738,32 +1306,202 @@
           </div>
         </div>
       </div>
-
+    </div>
   </div>
 
   <!-- Toast -->
   <div id="toast" class="toast"></div>
 
   <script>
+    // ========== CONFIGURATION FIREBASE ==========
+    const firebaseConfig = {
+      apiKey: "AIzaSyS1pcRdJMPaHEL-SrKvCMSZRlwMPi9Yw",
+      authDomain: "suivi-ateliers-collectif-e85b6.firebaseapp.com",
+      projectId: "suivi-ateliers-collectif-e85b6",
+      storageBucket: "suivi-ateliers-collectif-e85b6.firebasestorage.app",
+      messagingSenderId: "183639389416",
+      appId: "1:183639389416:web:26ba0f0017b55774a5f675",
+      measurementId: "G-NKD8YYKILF"
+    };
+
     // Variables globales
     let collectifData = [];
     let selectedRows = new Set();
+    let db = null;
+    let isOnline = false;
+    let isInitializing = true;
 
-    // Initialisation
+    // ========== INITIALISATION FIREBASE ==========
+    async function initFirebase() {
+      try {
+        updateConnectionStatus('connecting', 'Initialisation Firebase...');
+        
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Initialiser Firestore
+        db = firebase.firestore();
+        
+        // Connexion anonyme (optionnelle)
+        await firebase.auth().signInAnonymously();
+        
+        // Écouter les changements en temps réel
+        setupRealtimeListener();
+        
+        updateConnectionStatus('connected', 'Connecté - Synchronisation active');
+        isOnline = true;
+        showToast('🎉 Connecté à Firebase ! Synchronisation active', 'success');
+        
+      } catch (error) {
+        console.error('Erreur Firebase:', error);
+        updateConnectionStatus('error', 'Erreur de connexion');
+        
+        // Charger les données locales en cas d'erreur
+        loadLocalData();
+        showToast('⚠️ Mode hors ligne - Données locales uniquement', 'error');
+      } finally {
+        isInitializing = false;
+      }
+    }
+
+    // ========== SYNCHRONISATION TEMPS RÉEL ==========
+    function setupRealtimeListener() {
+      if (!db) return;
+      
+      db.collection('ateliers')
+        .orderBy('timestamp', 'desc')
+        .onSnapshot((snapshot) => {
+          if (isInitializing) return;
+          
+          const newData = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            newData.push({
+              id: doc.id,
+              ...data
+            });
+          });
+          
+          collectifData = newData;
+          displayTable();
+          updateStats();
+          updateCharts();
+          
+          showToast(`📡 Données synchronisées (${newData.length} ateliers)`, 'info');
+        }, (error) => {
+          console.error('Erreur synchronisation:', error);
+          updateConnectionStatus('error', 'Erreur de synchronisation');
+        });
+    }
+
+    // ========== SAUVEGARDE DANS FIREBASE ==========
+    async function saveToFirebase(data) {
+      if (!db || !isOnline) {
+        // Fallback sur localStorage
+        saveLocalData();
+        return;
+      }
+      
+      try {
+        updateConnectionStatus('connecting', 'Sauvegarde...');
+        
+        // Ajouter timestamp pour le tri
+        const dataWithTimestamp = {
+          ...data,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+          createdAt: new Date().toISOString()
+        };
+        
+        await db.collection('ateliers').add(dataWithTimestamp);
+        
+        updateConnectionStatus('connected', 'Connecté - Synchronisation active');
+        showToast('✅ Atelier sauvegardé et synchronisé', 'success');
+        
+      } catch (error) {
+        console.error('Erreur sauvegarde Firebase:', error);
+        updateConnectionStatus('error', 'Erreur de sauvegarde');
+        
+        // Fallback sur localStorage
+        collectifData.push(data);
+        saveLocalData();
+        displayTable();
+        updateStats();
+        showToast('⚠️ Sauvegardé localement - Sync dès reconnexion', 'error');
+      }
+    }
+
+    // ========== SUPPRESSION DANS FIREBASE ==========
+    async function deleteFromFirebase(itemId) {
+      if (!db || !isOnline || !itemId) {
+        // Fallback local
+        return false;
+      }
+      
+      try {
+        await db.collection('ateliers').doc(itemId).delete();
+        showToast('🗑️ Atelier supprimé et synchronisé', 'success');
+        return true;
+      } catch (error) {
+        console.error('Erreur suppression Firebase:', error);
+        showToast('⚠️ Erreur suppression - Mode local', 'error');
+        return false;
+      }
+    }
+
+    // ========== GESTION STATUT CONNEXION ==========
+    function updateConnectionStatus(status, text) {
+      const statusEl = document.getElementById('connectionStatus');
+      const textEl = document.getElementById('statusText');
+      
+      statusEl.className = `connection-status ${status}`;
+      textEl.textContent = text;
+      
+      // Masquer le spinner si connecté
+      const spinner = statusEl.querySelector('.sync-spinner');
+      if (status === 'connected' && spinner) {
+        spinner.style.display = 'none';
+      }
+    }
+
+    // ========== FALLBACK LOCALSTORAGE ==========
+    function saveLocalData() {
+      try {
+        localStorage.setItem('collectifData', JSON.stringify(collectifData));
+      } catch (e) {
+        console.warn('Impossible de sauvegarder dans localStorage');
+      }
+    }
+
+    function loadLocalData() {
+      try {
+        const saved = localStorage.getItem('collectifData');
+        if (saved) {
+          collectifData = JSON.parse(saved);
+          displayTable();
+          updateStats();
+        }
+      } catch (e) {
+        console.warn('Impossible de charger depuis localStorage');
+        collectifData = [];
+      }
+    }
+
+    // ========== INITIALISATION ==========
     window.onload = function() {
-      loadData();
       document.getElementById('colDate').value = new Date().toISOString().split('T')[0];
       initTabs();
-      updateStats();
       updateTotalDisplay();
+      
+      // Initialiser Firebase
+      initFirebase();
     };
 
-    // Gestion des onglets
+    // ========== GESTION DES ONGLETS ==========
     function initTabs() {
       document.getElementById('btnForm').onclick = () => showSection('formSection', 'btnForm');
       document.getElementById('btnStats').onclick = () => {
         showSection('statsSection', 'btnStats');
-        setTimeout(updateCharts, 100); // Délai pour que les canvas soient visibles
+        setTimeout(updateCharts, 100);
       };
     }
 
@@ -1774,7 +1512,7 @@
       document.getElementById(btnId).classList.add('active');
     }
 
-    // Gestion des compteurs avec validation
+    // ========== GESTION DES COMPTEURS ==========
     function updateCount(delta) {
       const input = document.getElementById('colCount');
       const newVal = Math.max(0, parseInt(input.value || 0) + delta);
@@ -1795,7 +1533,6 @@
         return;
       }
 
-      // Construire l'ID de l'élément
       let elementId = 'cnt' + id.charAt(0).toUpperCase() + id.slice(1);
       if (id === 'sa') elementId = 'cntSa';
       if (id === 'ea') elementId = 'cntEa';
@@ -1807,13 +1544,10 @@
       const currentVal = parseInt(el.textContent);
       const newVal = Math.max(0, currentVal + delta);
       
-      // Vérifier si on dépasse le total pour chaque catégorie
       if (delta > 0) {
-        // Vérifier selon la catégorie
         let categoryTotal = 0;
         
         if (['pf', 'pr', 'po'].includes(id)) {
-          // Catégorie participation
           categoryTotal = parseInt(document.getElementById('cntPf').textContent) +
                          parseInt(document.getElementById('cntPr').textContent) +
                          parseInt(document.getElementById('cntPo').textContent);
@@ -1821,13 +1555,11 @@
           if (id === 'pr') categoryTotal = categoryTotal - parseInt(document.getElementById('cntPr').textContent) + newVal;
           if (id === 'po') categoryTotal = categoryTotal - parseInt(document.getElementById('cntPo').textContent) + newVal;
         } else if (['m', 'f'].includes(id)) {
-          // Catégorie sexe
           categoryTotal = parseInt(document.getElementById('cntM').textContent) +
                          parseInt(document.getElementById('cntF').textContent);
           if (id === 'm') categoryTotal = categoryTotal - parseInt(document.getElementById('cntM').textContent) + newVal;
           if (id === 'f') categoryTotal = categoryTotal - parseInt(document.getElementById('cntF').textContent) + newVal;
         } else if (['t0', 't12', 't18', 't25', 't40', 't60', 't70'].includes(id)) {
-          // Catégorie âge
           categoryTotal = parseInt(document.getElementById('cntT0').textContent) +
                          parseInt(document.getElementById('cntT12').textContent) +
                          parseInt(document.getElementById('cntT18').textContent) +
@@ -1843,7 +1575,6 @@
           if (id === 't60') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT60').textContent) + newVal;
           if (id === 't70') categoryTotal = categoryTotal - parseInt(document.getElementById('cntT70').textContent) + newVal;
         } else if (['sa', 'ea', 'sch', 'ret', 'nc'].includes(id)) {
-          // Catégorie statut
           categoryTotal = parseInt(document.getElementById('cntSa').textContent) +
                          parseInt(document.getElementById('cntEa').textContent) +
                          parseInt(document.getElementById('cntSch').textContent) +
@@ -1866,19 +1597,6 @@
       hideValidationAlert();
     }
 
-    function getCurrentTotal() {
-      const counters = [
-        'cntPf', 'cntPr', 'cntPo', 'cntM', 'cntF', 
-        'cntT0', 'cntT12', 'cntT18', 'cntT25', 'cntT40', 'cntT60', 'cntT70',
-        'cntSa', 'cntEa', 'cntSch', 'cntRet', 'cntNc'
-      ];
-      
-      return counters.reduce((total, id) => {
-        const el = document.getElementById(id);
-        return total + (el ? parseInt(el.textContent) : 0);
-      }, 0);
-    }
-
     function showValidationAlert(message) {
       document.getElementById('validationMessage').textContent = message;
       document.getElementById('validationAlert').classList.add('show');
@@ -1889,7 +1607,7 @@
       document.getElementById('validationAlert').classList.remove('show');
     }
 
-    // Réinitialisation du formulaire
+    // ========== RÉINITIALISATION DU FORMULAIRE ==========
     document.getElementById('btnReset').onclick = function() {
       if (confirm('Réinitialiser le formulaire ?')) {
         resetForm();
@@ -1913,8 +1631,8 @@
       hideValidationAlert();
     }
 
-    // Sauvegarde des données
-    function saveCollectif() {
+    // ========== SAUVEGARDE DES DONNÉES ==========
+    async function saveCollectif() {
       const activity = document.getElementById('colActivity').value;
       const count = parseInt(document.getElementById('colCount').value || 0);
       
@@ -1927,6 +1645,11 @@
         showToast('Le nombre de participants doit être supérieur à 0', 'error');
         return;
       }
+      
+      // Désactiver le bouton pendant la sauvegarde
+      const saveBtn = document.getElementById('btnSave');
+      saveBtn.disabled = true;
+      saveBtn.textContent = '💾 Sauvegarde...';
       
       const data = {
         date: document.getElementById('colDate').value,
@@ -1952,21 +1675,256 @@
         notes: document.getElementById('collectNotes').value
       };
       
-      collectifData.push(data);
-      showToast('Atelier enregistré avec succès', 'success');
-      
-      saveData();
-      displayTable();
-      updateStats();
-      resetForm();
+      try {
+        await saveToFirebase(data);
+        resetForm();
+      } catch (error) {
+        console.error('Erreur sauvegarde:', error);
+        showToast('Erreur lors de la sauvegarde', 'error');
+      } finally {
+        // Réactiver le bouton
+        saveBtn.disabled = false;
+        saveBtn.textContent = '💾 Enregistrer l\'atelier collectif';
+      }
     }
 
-    // === VARIABLES ET FONCTIONS STATISTIQUES ===
-    
-    // Variables pour les graphiques
-    let charts = {};
+    // ========== AFFICHAGE DU TABLEAU ==========
+    function displayTable() {
+      const tbody = document.getElementById('tbodyCollectif');
+      tbody.innerHTML = '';
+      
+      collectifData.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="select-col"><input type="checkbox" onchange="toggleRow(${index})" ${selectedRows.has(index) ? 'checked' : ''}></td>
+          <td>${formatDate(item.date)}</td>
+          <td>${item.activity}</td>
+          <td>${item.count}</td>
+          <td>${item.firstTime}</td>
+          <td>${item.regular}</td>
+          <td>${item.occasional}</td>
+          <td>${item.male}</td>
+          <td>${item.female}</td>
+          <td>
+            <button class="action-btn" onclick="viewDetails(${index})" title="Voir détails">👁️</button>
+            <button class="action-btn" onclick="deleteRow(${index})" title="Supprimer">🗑️</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-    // Mise à jour des graphiques avec le nouveau style
+    // ========== FONCTIONS DU TABLEAU ==========
+    function toggleAll() {
+      const isChecked = document.getElementById('selectAll').checked;
+      document.querySelectorAll('#tbodyCollectif input[type="checkbox"]').forEach((cb, i) => {
+        cb.checked = isChecked;
+        if (isChecked) selectedRows.add(i);
+        else selectedRows.delete(i);
+      });
+    }
+
+    function toggleRow(index) {
+      if (selectedRows.has(index)) selectedRows.delete(index);
+      else selectedRows.add(index);
+    }
+
+    async function deleteRow(index) {
+      if (confirm('Supprimer cet atelier ?')) {
+        const item = collectifData[index];
+        
+        // Tenter de supprimer sur Firebase
+        const deleted = await deleteFromFirebase(item.id);
+        
+        if (!deleted) {
+          // Fallback: suppression locale
+          collectifData.splice(index, 1);
+          saveLocalData();
+          displayTable();
+          updateStats();
+        }
+      }
+    }
+
+    function viewDetails(index) {
+      const item = collectifData[index];
+      
+      const detailsHTML = `
+        <div style="padding: 20px;">
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📅 Informations générales</h3>
+            <p><strong>Date:</strong> ${formatDate(item.date)}</p>
+            <p><strong>Activité:</strong> ${item.activity}</p>
+            <p><strong>Participants:</strong> ${item.count}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">🔄 Types de participation</h3>
+            <p><strong>Première fois:</strong> ${item.firstTime}</p>
+            <p><strong>Régulier:</strong> ${item.regular}</p>
+            <p><strong>Occasionnel:</strong> ${item.occasional}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">👥 Répartition par genre</h3>
+            <p><strong>Hommes:</strong> ${item.male}</p>
+            <p><strong>Femmes:</strong> ${item.female}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📊 Tranches d'âge</h3>
+            <p><strong>&lt;12 ans:</strong> ${item.age0}</p>
+            <p><strong>12-17 ans:</strong> ${item.age12}</p>
+            <p><strong>18-24 ans:</strong> ${item.age18}</p>
+            <p><strong>25-39 ans:</strong> ${item.age25}</p>
+            <p><strong>40-59 ans:</strong> ${item.age40}</p>
+            <p><strong>60-69 ans:</strong> ${item.age60}</p>
+            <p><strong>70 ans et +:</strong> ${item.age70}</p>
+          </div>
+          
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">💼 Statuts</h3>
+            <p><strong>Sans activité:</strong> ${item.statusSA}</p>
+            <p><strong>En activité:</strong> ${item.statusEA}</p>
+            <p><strong>Scolarisé:</strong> ${item.statusSch}</p>
+            <p><strong>Retraité:</strong> ${item.statusRet}</p>
+            <p><strong>Non communiqué:</strong> ${item.statusNC}</p>
+          </div>
+          
+          ${item.notes ? `
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #1e293b; margin-bottom: 15px;">📝 Notes</h3>
+            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">${item.notes}</div>
+          </div>
+          ` : ''}
+          
+          <div style="text-align: center; margin-top: 20px;">
+            <button onclick="closeDetailsModal()" style="background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Fermer</button>
+          </div>
+        </div>
+      `;
+      
+      let modal = document.getElementById('detailsModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'detailsModal';
+        modal.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0,0,0,0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
+        `;
+        document.body.appendChild(modal);
+      }
+      
+      modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+          ${detailsHTML}
+        </div>
+      `;
+      
+      modal.style.display = 'flex';
+    }
+
+    function closeDetailsModal() {
+      const modal = document.getElementById('detailsModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    }
+
+    async function clearAll() {
+      if (confirm('Supprimer toutes les données ? Cette action est irréversible.')) {
+        try {
+          if (db && isOnline) {
+            // Supprimer toutes les données Firebase
+            const batch = db.batch();
+            const snapshot = await db.collection('ateliers').get();
+            snapshot.docs.forEach((doc) => {
+              batch.delete(doc.ref);
+            });
+            await batch.commit();
+            showToast('🗑️ Toutes les données supprimées et synchronisées', 'success');
+          } else {
+            // Suppression locale uniquement
+            collectifData = [];
+            saveLocalData();
+            displayTable();
+            updateStats();
+            showToast('🗑️ Données locales supprimées', 'success');
+          }
+        } catch (error) {
+          console.error('Erreur suppression:', error);
+          showToast('Erreur lors de la suppression', 'error');
+        }
+        
+        selectedRows.clear();
+      }
+    }
+
+    // ========== EXPORT EXCEL ==========
+    function exportXLSX() {
+      if (collectifData.length === 0) {
+        showToast('Aucune donnée à exporter', 'error');
+        return;
+      }
+      
+      const ws_data = [
+        ['Date', 'Activité', 'Participants', 'Première fois', 'Régulier', 'Occasionnel', 
+         'Hommes', 'Femmes', '<12 ans', '12-17 ans', '18-24 ans', '25-39 ans', 
+         '40-59 ans', '60-69 ans', '70 ans +', 'Sans activité', 'En activité', 
+         'Scolarisé', 'Retraité', 'Non communiqué', 'Notes']
+      ];
+      
+      collectifData.forEach(item => {
+        ws_data.push([
+          formatDate(item.date),
+          item.activity,
+          item.count,
+          item.firstTime,
+          item.regular,
+          item.occasional,
+          item.male,
+          item.female,
+          item.age0,
+          item.age12,
+          item.age18,
+          item.age25,
+          item.age40,
+          item.age60,
+          item.age70,
+          item.statusSA,
+          item.statusEA,
+          item.statusSch,
+          item.statusRet,
+          item.statusNC,
+          item.notes || ''
+        ]);
+      });
+      
+      const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Ateliers');
+      XLSX.writeFile(wb, `ateliers_${new Date().toISOString().split('T')[0]}.xlsx`);
+      showToast('📊 Export Excel réussi', 'success');
+    }
+
+    // ========== MISE À JOUR DES STATISTIQUES ==========
+    function updateStats() {
+      const totalAteliers = collectifData.length;
+      const totalParticipants = collectifData.reduce((sum, item) => sum + item.count, 0);
+      
+      document.getElementById('cntAteliers').textContent = totalAteliers;
+      document.getElementById('cntParticipants').textContent = totalParticipants;
+    }
+
+    // ========== GRAPHIQUES STATISTIQUES ==========
     function updateCharts() {
       if (collectifData.length === 0) {
         document.getElementById('totalWorkshops').textContent = '0';
@@ -1977,7 +1935,6 @@
         return;
       }
       
-      // Vue d'ensemble
       const totalWorkshops = collectifData.length;
       const totalParticipants = collectifData.reduce((sum, item) => sum + item.count, 0);
       const avgParticipants = Math.round(totalParticipants / totalWorkshops * 10) / 10;
@@ -1986,14 +1943,12 @@
       document.getElementById('totalParticipants').textContent = totalParticipants;
       document.getElementById('avgParticipants').textContent = avgParticipants;
       
-      // Date range
       const dates = collectifData.map(item => new Date(item.date));
       const minDate = new Date(Math.min(...dates));
       const maxDate = new Date(Math.max(...dates));
       document.getElementById('dateRange').textContent = 
         `Du ${formatDate(minDate.toISOString().split('T')[0])} au ${formatDate(maxDate.toISOString().split('T')[0])}`;
       
-      // Calculer les totaux pour les nouveaux graphiques
       let totalHommes = 0, totalFemmes = 0;
       let totalPremiere = 0, totalRegulier = 0, totalOccasionnel = 0;
       let totalMoins12 = 0, totalAge12_17 = 0, totalAge18_24 = 0, totalAge25_39 = 0;
@@ -2020,7 +1975,6 @@
         totalRetraite += item.statusRet;
         totalNonCommunique += item.statusNC;
         
-        // Activités
         if (activites[item.activity]) {
           activites[item.activity] += item.count;
         } else {
@@ -2028,7 +1982,6 @@
         }
       });
 
-      // Mettre à jour les nouveaux graphiques
       updateSexeChart(totalHommes, totalFemmes);
       updateFrequenceChart(totalPremiere, totalRegulier, totalOccasionnel);
       updateAgeStats(totalMoins12, totalAge12_17, totalAge18_24, totalAge25_39, totalAge40_59, totalAge60_69, totalAge70plus, totalParticipants);
@@ -2058,7 +2011,6 @@
         document.getElementById('sexeHommesPercent').textContent = hommesPercent + '%';
         document.getElementById('sexeFemmesPercent').textContent = femmesPercent + '%';
         
-        // Calculer les dasharray pour le donut
         const circumference = 2 * Math.PI * 80;
         const hommesLength = (hommes / total) * circumference;
         const femmesLength = (femmes / total) * circumference;
@@ -2091,7 +2043,6 @@
         document.getElementById('freqRegulierPercent').textContent = regulierPercent + '%';
         document.getElementById('freqOccasionnelPercent').textContent = occasionnelPercent + '%';
         
-        // Calculer les dasharray pour le donut
         const circumference = 2 * Math.PI * 80;
         const premiereLength = (premiere / total) * circumference;
         const regulierLength = (regulier / total) * circumference;
@@ -2168,10 +2119,9 @@
         return;
       }
 
-      // Trier les activités par nombre de participants (décroissant)
       const sortedActivites = Object.entries(activites)
         .sort(([,a], [,b]) => b - a)
-        .slice(0, 10); // Limiter aux 10 premières
+        .slice(0, 10);
 
       const maxParticipants = Math.max(...Object.values(activites));
 
@@ -2197,345 +2147,17 @@
       });
     }
 
-    // Export PDF des statistiques
+    // ========== EXPORT PDF ==========
     function exportStatsPDF() {
       if (collectifData.length === 0) {
         showToast('Aucune donnée à exporter', 'error');
         return;
       }
       
-      showToast('Fonctionnalité PDF en développement', 'info');
+      showToast('📄 Fonctionnalité PDF en développement', 'info');
     }
 
-    function drawActivitiesChart() {
-      const ctx = document.getElementById('chartActivities').getContext('2d');
-      
-      // Détruire le graphique existant
-      if (charts.activities) {
-        charts.activities.destroy();
-      }
-      
-      const activities = {};
-      collectifData.forEach(item => {
-        activities[item.activity] = (activities[item.activity] || 0) + item.count;
-      });
-      
-      const sortedActivities = Object.entries(activities).sort((a, b) => b[1] - a[1]);
-      const totalParticipants = Object.values(activities).reduce((a, b) => a + b, 0);
-      
-      const colors = ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#fa709a', '#fee140', '#30cfd0'];
-      
-      charts.activities = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: sortedActivities.map(a => a[0]),
-          datasets: [{
-            data: sortedActivities.map(a => a[1]),
-            backgroundColor: colors.slice(0, sortedActivities.length),
-            borderWidth: 2,
-            borderColor: '#fff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          }
-        }
-      });
-      
-      // Légende personnalisée
-      const legend = document.getElementById('activitiesLegend');
-      legend.innerHTML = sortedActivities.map((item, i) => {
-        const percentage = ((item[1] / totalParticipants) * 100).toFixed(1);
-        return `
-          <div class="legend-item">
-            <div class="legend-label">
-              <span class="legend-color" style="background: ${colors[i]}"></span>
-              ${item[0]}
-            </div>
-            <div class="legend-stats">
-              <span class="legend-count">${item[1]}</span>
-              <span class="legend-percentage">${percentage}%</span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function drawGenderChart() {
-      const ctx = document.getElementById('chartGender').getContext('2d');
-      
-      if (charts.gender) {
-        charts.gender.destroy();
-      }
-      
-      const male = collectifData.reduce((sum, item) => sum + item.male, 0);
-      const female = collectifData.reduce((sum, item) => sum + item.female, 0);
-      const total = male + female;
-      
-      if (total === 0) return;
-      
-      charts.gender = new Chart(ctx, {
-        type: 'pie',
-        data: {
-          labels: ['Hommes', 'Femmes'],
-          datasets: [{
-            data: [male, female],
-            backgroundColor: ['#667eea', '#f093fb'],
-            borderWidth: 2,
-            borderColor: '#fff'
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          }
-        }
-      });
-      
-      // Légende
-      const legend = document.getElementById('genderLegend');
-      legend.innerHTML = `
-        <div class="legend-item">
-          <div class="legend-label">
-            <span class="legend-color" style="background: #667eea"></span>
-            Hommes
-          </div>
-          <div class="legend-stats">
-            <span class="legend-count">${male}</span>
-            <span class="legend-percentage">${((male/total)*100).toFixed(1)}%</span>
-          </div>
-        </div>
-        <div class="legend-item">
-          <div class="legend-label">
-            <span class="legend-color" style="background: #f093fb"></span>
-            Femmes
-          </div>
-          <div class="legend-stats">
-            <span class="legend-count">${female}</span>
-            <span class="legend-percentage">${((female/total)*100).toFixed(1)}%</span>
-          </div>
-        </div>
-      `;
-    }
-
-    // Affichage du tableau
-    function displayTable() {
-      const tbody = document.getElementById('tbodyCollectif');
-      tbody.innerHTML = '';
-      
-      collectifData.forEach((item, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td class="select-col"><input type="checkbox" onchange="toggleRow(${index})" ${selectedRows.has(index) ? 'checked' : ''}></td>
-          <td>${formatDate(item.date)}</td>
-          <td>${item.activity}</td>
-          <td>${item.count}</td>
-          <td>${item.firstTime}</td>
-          <td>${item.regular}</td>
-          <td>${item.occasional}</td>
-          <td>${item.male}</td>
-          <td>${item.female}</td>
-          <td>
-            <button class="action-btn" onclick="viewDetails(${index})" title="Voir détails">👁️</button>
-            <button class="action-btn" onclick="deleteRow(${index})" title="Supprimer">🗑️</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    // Fonctions du tableau
-    function toggleAll() {
-      const isChecked = document.getElementById('selectAll').checked;
-      document.querySelectorAll('#tbodyCollectif input[type="checkbox"]').forEach((cb, i) => {
-        cb.checked = isChecked;
-        if (isChecked) selectedRows.add(i);
-        else selectedRows.delete(i);
-      });
-    }
-
-    function toggleRow(index) {
-      if (selectedRows.has(index)) selectedRows.delete(index);
-      else selectedRows.add(index);
-    }
-
-    function deleteRow(index) {
-      if (confirm('Supprimer cet atelier ?')) {
-        collectifData.splice(index, 1);
-        saveData();
-        displayTable();
-        updateStats();
-        showToast('Atelier supprimé', 'success');
-      }
-    }
-
-    function viewDetails(index) {
-      const item = collectifData[index];
-      
-      const detailsHTML = `
-        <div style="padding: 20px;">
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">📅 Informations générales</h3>
-            <p><strong>Date:</strong> ${formatDate(item.date)}</p>
-            <p><strong>Activité:</strong> ${item.activity}</p>
-            <p><strong>Participants:</strong> ${item.count}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">🔄 Types de participation</h3>
-            <p><strong>Première fois:</strong> ${item.firstTime}</p>
-            <p><strong>Régulier:</strong> ${item.regular}</p>
-            <p><strong>Occasionnel:</strong> ${item.occasional}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">👥 Répartition par genre</h3>
-            <p><strong>Hommes:</strong> ${item.male}</p>
-            <p><strong>Femmes:</strong> ${item.female}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">📊 Tranches d'âge</h3>
-            <p><strong>&lt;12 ans:</strong> ${item.age0}</p>
-            <p><strong>12-17 ans:</strong> ${item.age12}</p>
-            <p><strong>18-24 ans:</strong> ${item.age18}</p>
-            <p><strong>25-39 ans:</strong> ${item.age25}</p>
-            <p><strong>40-59 ans:</strong> ${item.age40}</p>
-            <p><strong>60-69 ans:</strong> ${item.age60}</p>
-            <p><strong>70 ans et +:</strong> ${item.age70}</p>
-          </div>
-          
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">💼 Statuts</h3>
-            <p><strong>Sans activité:</strong> ${item.statusSA}</p>
-            <p><strong>En activité:</strong> ${item.statusEA}</p>
-            <p><strong>Scolarisé:</strong> ${item.statusSch}</p>
-            <p><strong>Retraité:</strong> ${item.statusRet}</p>
-            <p><strong>Non communiqué:</strong> ${item.statusNC}</p>
-          </div>
-          
-          ${item.notes ? `
-          <div style="margin-bottom: 20px;">
-            <h3 style="color: #1e293b; margin-bottom: 15px;">📝 Notes</h3>
-            <div style="background: #f8fafc; padding: 12px; border-radius: 6px; border-left: 4px solid #3b82f6;">${item.notes}</div>
-          </div>
-          ` : ''}
-          
-          <div style="text-align: center; margin-top: 20px;">
-            <button onclick="closeDetailsModal()" style="background: #6366f1; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Fermer</button>
-          </div>
-        </div>
-      `;
-      
-      // Créer et afficher la modal
-      let modal = document.getElementById('detailsModal');
-      if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'detailsModal';
-        modal.style.cssText = `
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0,0,0,0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
-        `;
-        document.body.appendChild(modal);
-      }
-      
-      modal.innerHTML = `
-        <div style="background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
-          ${detailsHTML}
-        </div>
-      `;
-      
-      modal.style.display = 'flex';
-    }
-
-    function closeDetailsModal() {
-      const modal = document.getElementById('detailsModal');
-      if (modal) {
-        modal.style.display = 'none';
-      }
-    }
-
-    function clearAll() {
-      if (confirm('Supprimer toutes les données ? Cette action est irréversible.')) {
-        collectifData = [];
-        selectedRows.clear();
-        saveData();
-        displayTable();
-        updateStats();
-        showToast('Toutes les données ont été supprimées', 'success');
-      }
-    }
-
-    // Export Excel
-    function exportXLSX() {
-      if (collectifData.length === 0) {
-        showToast('Aucune donnée à exporter', 'error');
-        return;
-      }
-      
-      const ws_data = [
-        ['Date', 'Activité', 'Participants', 'Première fois', 'Régulier', 'Occasionnel', 
-         'Hommes', 'Femmes', '<12 ans', '12-17 ans', '18-24 ans', '25-39 ans', 
-         '40-59 ans', '60-69 ans', '70 ans +', 'Sans activité', 'En activité', 
-         'Scolarisé', 'Retraité', 'Non communiqué', 'Notes']
-      ];
-      
-      collectifData.forEach(item => {
-        ws_data.push([
-          formatDate(item.date),
-          item.activity,
-          item.count,
-          item.firstTime,
-          item.regular,
-          item.occasional,
-          item.male,
-          item.female,
-          item.age0,
-          item.age12,
-          item.age18,
-          item.age25,
-          item.age40,
-          item.age60,
-          item.age70,
-          item.statusSA,
-          item.statusEA,
-          item.statusSch,
-          item.statusRet,
-          item.statusNC,
-          item.notes || ''
-        ]);
-      });
-      
-      const ws = XLSX.utils.aoa_to_sheet(ws_data);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Ateliers');
-      XLSX.writeFile(wb, `ateliers_${new Date().toISOString().split('T')[0]}.xlsx`);
-      showToast('Export Excel réussi', 'success');
-    }
-
-    // Mise à jour des statistiques
-    function updateStats() {
-      const totalAteliers = collectifData.length;
-      const totalParticipants = collectifData.reduce((sum, item) => sum + item.count, 0);
-      
-      document.getElementById('cntAteliers').textContent = totalAteliers;
-      document.getElementById('cntParticipants').textContent = totalParticipants;
-    }
-
-    // Fonctions utilitaires
+    // ========== FONCTIONS UTILITAIRES ==========
     function formatDate(dateStr) {
       const date = new Date(dateStr);
       return date.toLocaleDateString('fr-FR');
@@ -2550,33 +2172,7 @@
       }, 3000);
     }
 
-    // Sauvegarde/chargement des données
-    function saveData() {
-      try {
-        localStorage.setItem('collectifData', JSON.stringify(collectifData));
-      } catch (e) {
-        console.warn('Impossible de sauvegarder dans localStorage');
-      }
-    }
-
-    function loadData() {
-      try {
-        const saved = localStorage.getItem('collectifData');
-        if (saved) {
-          collectifData = JSON.parse(saved);
-          displayTable();
-          updateStats();
-        }
-      } catch (e) {
-        console.warn('Impossible de charger depuis localStorage');
-        collectifData = [];
-      }
-    }
-
   </script>
-
-  <!-- Bibliothèques externes -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 </body>
 </html>
